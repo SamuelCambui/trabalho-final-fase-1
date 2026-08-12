@@ -1,0 +1,61 @@
+# .dockerignore
+# Arquivos e pastas a ignorar durante docker build
+
+# Ambiente virtual Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testes (não vão para produção)
+tests/
+pytest_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Dados (serão montados via volume)
+data/
+*.csv
+*.parquet
+
+# Modelos (serão montados via volume ou baixados)
+models/
+*.pkl
+*.joblib
+
+# DVC
+.dvc/
+dvc.lock
+*.dvc
+
+# Documentação
+docs/
+*.md
+!README.md
+
+# Outros
+.env
+.env.*
+*.log
+tmp/
+temp/
