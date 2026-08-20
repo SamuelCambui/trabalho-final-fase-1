@@ -1,179 +1,203 @@
-## Configuração
+# Predição de Churn de Clientes Telco
 
-### 1. Clone o projeto
+Projeto do Tech Challenge - Fase 1 da FIAP Pós-Tech. A solução percorre o ciclo de vida de um produto de Machine Learning: análise exploratória, treinamento e comparação de modelos, empacotamento do pipeline e disponibilização de inferência por uma API REST com FastAPI.
 
-git clone <https://github.com/SamuelCambui/trabalho-final-fase-1.git>
+## Problema de negócio
 
-cd tech-challenge-churn
+Uma operadora de telecomunicações precisa identificar clientes com maior propensão ao cancelamento. O objetivo do modelo é apoiar ações preventivas de retenção, priorizando clientes de maior risco para contato ou ofertas direcionadas.
 
-### 2. Instale as dependências
+A saída deve ser usada como apoio à decisão, e não como decisão automática sobre clientes. O custo de deixar de identificar um cliente que realmente cancelará pode ser maior que o custo de abordar um cliente sem intenção de cancelar; por isso, recall da classe de churn também deve ser considerado junto com ROC-AUC.
 
-pip install -r requirements.txt
+## Entregas do projeto
 
-### 3. Autentique o Kaggle
+- EDA e baseline de Regressão Logística no notebook;
+- pipelines reprodutíveis de pré-processamento com Scikit-Learn;
+- treinamento e comparação de Random Forest e MLPClassifier;
+- seleção e persistência do modelo usado pela API;
+- API FastAPI com health check, autenticação JWT e predição;
+- testes automatizados com Pytest;
+- [Model Card](docs/MODEL_CARD.md) com desempenho, limitações e riscos;
+- [roteiro do vídeo STAR](docs/VIDEO_STAR.md) com duração máxima de 5 minutos.
 
-Acesse o https://www.kaggle.com/settings/api faça login e clique em API tokens e após clique em "Create Legacy API Key"
+## Dataset e principais achados
 
-Baixe o json e coloque na pasta do projeto
+Foi utilizado o dataset público **Telco Customer Churn**, com 7.043 clientes e 21 colunas na versão bruta. A variável alvo é `Churn`, em que `Yes` representa cancelamento.
 
-### 4. Execute o setup
+Principais achados da EDA registrada em `notebook.ipynb`:
 
+- 26,54% dos clientes apresentam churn, indicando desbalanceamento moderado;
+- clientes com churn têm, em média, 17,98 meses de permanência, contra 37,57 meses entre os que permanecem;
+- contratos mensais apresentam 42,71% de churn, contra 11,27% nos contratos anuais e 2,83% nos contratos de dois anos;
+- clientes com fibra óptica apresentam 41,89% de churn no recorte observado;
+- a cobrança mensal média é maior entre clientes com churn: 74,44 contra 61,27.
+
+Essas relações são descritivas e não demonstram causalidade.
+
+## Metodologia
+
+O fluxo de treinamento:
+
+1. converte `TotalCharges` para número, remove `customerID` e descarta registros inválidos;
+2. divide os dados em 70% para treino e 30% para teste, com estratificação e `random_state=42`;
+3. imputa variáveis numéricas pela mediana e aplica `StandardScaler`;
+4. imputa variáveis categóricas pela moda e aplica `OneHotEncoder`;
+5. treina Random Forest e MLP, com busca de hiperparâmetros opcional;
+6. compara os modelos com validação cruzada de 5 folds usando ROC-AUC;
+7. salva o modelo de maior ROC-AUC médio em `models/model.joblib`.
+
+Todo o pré-processamento fica dentro do `Pipeline` do Scikit-Learn, reduzindo risco de vazamento entre treino e validação.
+
+## Resultados
+
+### Validação cruzada do pipeline final
+
+| Modelo | ROC-AUC médio | Desvio padrão |
+|---|---:|---:|
+| MLP | 0,8481 | 0,0150 |
+| Random Forest | 0,8477 | 0,0147 |
+
+### Conjunto de teste
+
+| Modelo | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Random Forest | 0,7502 | 0,5202 | **0,7790** | **0,6238** | **0,8326** |
+| MLP | **0,7948** | **0,6397** | 0,5223 | 0,5751 | 0,8324 |
+
+O pipeline atual escolhe a **MLP** porque ela obteve o maior ROC-AUC médio na validação cruzada, que é a regra implementada. Entretanto, a diferença de 0,0004 para Random Forest é muito menor que o desvio observado nos folds e não comprova superioridade prática. Para uma campanha cujo objetivo principal seja encontrar o maior número possível de clientes propensos ao churn, a Random Forest é uma candidata operacional forte por seu recall de 0,7790. A decisão final deve considerar o custo de falsos positivos e falsos negativos e pode exigir ajuste do threshold.
+
+O notebook também registra o baseline de Regressão Logística com ROC-AUC médio de 0,8456. Como esse resultado foi produzido em uma execução anterior do notebook e não consta no relatório final gerado por `src/train_model`, ele deve ser tratado como referência histórica, não como uma comparação controlada definitiva. Consulte o [Model Card](docs/MODEL_CARD.md) para detalhes.
+
+## Estrutura do projeto
+
+```text
+.
+├── data/
+│   ├── download_dataset.py
+│   └── raw/                         # criado pelo setup; dados não versionados
+├── docs/
+│   ├── MODEL_CARD.md
+│   └── VIDEO_STAR.md
+├── models/
+│   └── comparison_results.csv
+├── scripts/
+│   └── setup.py
+├── src/
+│   ├── api/
+│   │   ├── routers/
+│   │   ├── schemas/
+│   │   └── services/
+│   └── train_model/
+├── tests/
+├── notebook.ipynb
+├── pyproject.toml
+└── requirements.txt
+```
+
+Os arquivos CSV brutos e os artefatos `.joblib` são ignorados pelo Git. Cada ambiente deve baixar os dados e treinar o modelo antes de iniciar a API.
+
+## Pré-requisitos
+
+- Python 3.13 recomendado (`.python-version` e `pyproject.toml`);
+- Git;
+- conta no Kaggle e um token de API para o setup automático.
+
+## Instalação
+
+```bash
+git clone https://github.com/SamuelCambui/trabalho-final-fase-1.git
+cd trabalho-final-fase-1
+
+python3.13 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+No Windows PowerShell, ative o ambiente com:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+### Download do dataset
+
+1. Acesse as [configurações de API do Kaggle](https://www.kaggle.com/settings/api).
+2. Crie uma chave legada em **Create Legacy API Key**.
+3. Salve o arquivo baixado como `kaggle.json` na raiz do projeto.
+4. Execute:
+
+```bash
 python scripts/setup.py
+```
 
-### 5. Configure o `.env`
+O script configura a credencial local, baixa `blastchar/telco-customer-churn` e valida os dados em `data/raw/`. O arquivo `kaggle.json` é ignorado pelo Git e nunca deve ser versionado.
 
-Na raiz do projeto, copie o `.env.example` e ajuste se precisar:
+## Treinamento
 
-cp .env.example .env
+Treinamento com GridSearchCV, usado para produzir a comparação registrada:
 
-As variáveis usadas pela API de autenticação:
-
-- `SECRET_KEY` — chave para assinar o JWT
-- `ALGORITHM` — padrão `HS256`
-- `ACCESS_TOKEN_EXPIRE_MINUTES` — tempo de expiração do token (padrão 30 min)
-
-### 6. Treinamento do modelo (MLP e Random Forest)
-
-Rode isso depois do setup, antes de subir a API:
-
-#### 6.1 Treinar com otimização (GridSearch — mais lento, recomendado)
-
+```bash
 python -m src.train_model.train
+```
 
-#### 6.2 Treinar rapido sem grid search
+Para uma execução mais rápida, sem busca de hiperparâmetros:
 
+```bash
 python -m src.train_model.train --sem-otimizacao
-
-#### 6.3 Saida esperada
-
-```terminal
-Dataset: caminho/data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
-Amostras de treino: 4922 | teste: 2110
-Distribuição de churn (treino):
-Churn
-0    0.734254
-1    0.265746
-Name: proportion, dtype: float64
-Melhores parâmetros (RF): {'classifier__max_depth': 10, 'classifier__min_samples_split': 10, 'classifier__n_estimators': 300}
-Melhor roc_auc (CV): 0.8477
-Modelo RF salvo em: caminho/models/rf_model.joblib
-Melhores parâmetros (MLP): {'classifier__activation': 'tanh', 'classifier__alpha': 0.001, 'classifier__hidden_layer_sizes': (64, 32)}
-Melhor roc_auc (CV): 0.8481
-Modelo MLP salvo em: caminho/models/mlp_model.joblib
-Relatório de comparação salvo em: caminho/models/comparison_results.csv
-
-Comparação (validação cruzada):
-       Modelo  ROC-AUC Médio  Desvio Padrão
-          MLP       0.848078       0.014987
-Random Forest       0.847671       0.014741
-
-Melhor modelo (CV): MLP
-Melhor modelo salvo para API em: caminho/models/model.joblib
-
-============================================================
-Avaliação no teste: Random Forest
-============================================================
-  ACCURACY: 0.7502
- PRECISION: 0.5202
-    RECALL: 0.7790
-        F1: 0.6238
-   ROC_AUC: 0.8326
-
-Matriz de confusão:
-[[1146  403]
- [ 124  437]]
-
-Relatório de classificação:
-              precision    recall  f1-score   support
-
-           0       0.90      0.74      0.81      1549
-           1       0.52      0.78      0.62       561
-
-    accuracy                           0.75      2110
-   macro avg       0.71      0.76      0.72      2110
-weighted avg       0.80      0.75      0.76      2110
-
-
-============================================================
-Avaliação no teste: MLP
-============================================================
-  ACCURACY: 0.7948
- PRECISION: 0.6397
-    RECALL: 0.5223
-        F1: 0.5751
-   ROC_AUC: 0.8324
-
-Matriz de confusão:
-[[1384  165]
- [ 268  293]]
-
-Relatório de classificação:
-              precision    recall  f1-score   support
-
-           0       0.84      0.89      0.86      1549
-           1       0.64      0.52      0.58       561
-
-    accuracy                           0.79      2110
-   macro avg       0.74      0.71      0.72      2110
-weighted avg       0.79      0.79      0.79      2110
 ```
 
-Arquivos gerados em `models/`:
+Também é possível informar o caminho do CSV:
 
-- `rf_model.joblib` — Random Forest
-- `mlp_model.joblib` — MLP
-- `model.joblib` — melhor modelo (usado pela API)
-- `comparison_results.csv` — comparação entre os dois
+```bash
+python -m src.train_model.train --dataset data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+```
 
-### 7. Subir a API FastAPI
+O treinamento gera:
 
+- `models/rf_model.joblib`: Random Forest;
+- `models/mlp_model.joblib`: MLP;
+- `models/model.joblib`: modelo selecionado e carregado pela API;
+- `models/comparison_results.csv`: resumo da validação cruzada.
+
+## Configuração e execução da API
+
+Copie o arquivo de ambiente e troque a chave em qualquer ambiente compartilhado:
+
+```bash
+cp .env.example .env
 python -m uvicorn src.api.main:app --reload
+```
 
-Docs interativas: http://127.0.0.1:8000/docs
+A documentação interativa fica disponível em <http://127.0.0.1:8000/docs>.
 
-A API carrega o `models/model.joblib` na inicialização. Se o arquivo não existir, o `/health` vai retornar `degraded` e o `/predict` responde 503.
+Se `models/model.joblib` não existir, a API inicia em modo degradado: `/health` informa `model_loaded: false` e `/predict` não fica disponível para inferência.
 
-### 8. Rotas disponíveis
+### Endpoints
 
-| Método | Rota | Auth | O que faz |
-|--------|------|------|-----------|
-| GET | `/health` | não | Status da API e se o modelo carregou |
-| GET | `/model/info` | não | Caminho, tipo do classificador e threshold |
-| POST | `/auth/login` | não | Login — retorna JWT |
-| GET | `/auth/me` | sim | Dados do usuário logado |
-| POST | `/predict` | sim | Predição de churn |
+| Método | Rota | Autenticação | Descrição |
+|---|---|---|---|
+| GET | `/health` | não | Informa o estado da API e do modelo |
+| GET | `/model/info` | não | Informa tipo do classificador e threshold |
+| POST | `/auth/login` | não | Retorna um token JWT |
+| GET | `/auth/me` | Bearer token | Retorna os dados do usuário autenticado |
+| POST | `/predict` | Bearer token | Retorna classe e probabilidade de churn |
 
-Usuários de teste:
+As credenciais `admin/admin` e `user/user` existem apenas para demonstração local.
 
-| login | senha | role |
-|-------|-------|------|
-| admin | admin | admin |
-| user | user | user |
+### Exemplo de uso
 
-### 9. Fluxo de uso da API
-
-Primeiro faz login e pega o token:
+Obtenha o token:
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/auth/login" \
+curl -X POST http://127.0.0.1:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}'
+  -d '{"username":"admin","password":"admin"}'
 ```
 
-Resposta:
-
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "token_type": "bearer",
-  "expires_in": 1800
-}
-```
-
-Com o token, chama o `/predict` passando no header:
+Use o valor de `access_token` retornado na predição:
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/predict" \
+curl -X POST http://127.0.0.1:8000/predict \
   -H "Authorization: Bearer SEU_TOKEN_AQUI" \
   -H "Content-Type: application/json" \
   -d '{
@@ -199,7 +223,7 @@ curl -X POST "http://127.0.0.1:8000/predict" \
   }'
 ```
 
-Resposta:
+Exemplo de resposta:
 
 ```json
 {
@@ -208,11 +232,28 @@ Resposta:
 }
 ```
 
-Para testar se o token está válido:
+## Testes
+
+Execute a suíte com:
 
 ```bash
-curl -X GET "http://127.0.0.1:8000/auth/me" \
-  -H "Authorization: Bearer SEU_TOKEN_AQUI"
+python -m pytest -q
 ```
 
-No Swagger (`/docs`), clique em **Authorize**, cole o token e teste os endpoints protegidos por la.
+Os testes cobrem a limpeza dos dados, o health check da API e a autenticação de demonstração.
+
+## Limitações e uso responsável
+
+- os dados representam uma única base pública e podem não refletir clientes atuais ou outras operadoras;
+- o dataset não permite avaliar deriva temporal ou generalização geográfica;
+- há desbalanceamento da classe positiva;
+- o threshold fixo de 0,5 ainda não foi otimizado pelo custo de negócio;
+- atributos demográficos e familiares podem introduzir tratamento desigual entre grupos;
+- as credenciais de demonstração e a chave JWT padrão não são adequadas para produção.
+
+Antes de uso real, recomenda-se validação com dados da operadora, análise de custo, calibração, avaliação por subgrupos, monitoramento de drift e revisão humana das ações de retenção.
+
+## Documentação da entrega
+
+- [Model Card](docs/MODEL_CARD.md)
+- [Roteiro e plano de gravação do vídeo STAR](docs/VIDEO_STAR.md)

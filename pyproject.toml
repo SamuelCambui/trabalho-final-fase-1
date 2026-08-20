@@ -1,7 +1,7 @@
 [project]
 name = "trabalho-final-fase-1"
 version = "0.1.0"
-description = "Add your description here"
+description = "Pipeline de Machine Learning e API FastAPI para predição de churn Telco"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
