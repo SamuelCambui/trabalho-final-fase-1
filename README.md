@@ -20,25 +20,31 @@ Baixe o json e coloque na pasta do projeto
 
 python scripts/setup.py
 
+### 5. Configure o `.env`
 
-### 5. Para acessar a API FASTAPI
-python -m uvicorn src.api.main:app --reload
+Na raiz do projeto, copie o `.env.example` e ajuste se precisar:
 
-Acesse o http://127.0.0.1:8000
+cp .env.example .env
 
-### 6. Para realizar o treinamento do modelo em MLP e RandomForest
+As variáveis usadas pela API de autenticação:
+
+- `SECRET_KEY` — chave para assinar o JWT
+- `ALGORITHM` — padrão `HS256`
+- `ACCESS_TOKEN_EXPIRE_MINUTES` — tempo de expiração do token (padrão 30 min)
+
+### 6. Treinamento do modelo (MLP e Random Forest)
+
+Rode isso depois do setup, antes de subir a API:
 
 #### 6.1 Treinar com otimização (GridSearch — mais lento, recomendado)
 
 python -m src.train_model.train
-
 
 #### 6.2 Treinar rapido sem grid search
 
 python -m src.train_model.train --sem-otimizacao
 
 #### 6.3 Saida esperada
-
 
 ```terminal
 Dataset: caminho/data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
@@ -111,3 +117,102 @@ Relatório de classificação:
    macro avg       0.74      0.71      0.72      2110
 weighted avg       0.79      0.79      0.79      2110
 ```
+
+Arquivos gerados em `models/`:
+
+- `rf_model.joblib` — Random Forest
+- `mlp_model.joblib` — MLP
+- `model.joblib` — melhor modelo (usado pela API)
+- `comparison_results.csv` — comparação entre os dois
+
+### 7. Subir a API FastAPI
+
+python -m uvicorn src.api.main:app --reload
+
+Docs interativas: http://127.0.0.1:8000/docs
+
+A API carrega o `models/model.joblib` na inicialização. Se o arquivo não existir, o `/health` vai retornar `degraded` e o `/predict` responde 503.
+
+### 8. Rotas disponíveis
+
+| Método | Rota | Auth | O que faz |
+|--------|------|------|-----------|
+| GET | `/health` | não | Status da API e se o modelo carregou |
+| GET | `/model/info` | não | Caminho, tipo do classificador e threshold |
+| POST | `/auth/login` | não | Login — retorna JWT |
+| GET | `/auth/me` | sim | Dados do usuário logado |
+| POST | `/predict` | sim | Predição de churn |
+
+Usuários de teste:
+
+| login | senha | role |
+|-------|-------|------|
+| admin | admin | admin |
+| user | user | user |
+
+### 9. Fluxo de uso da API
+
+Primeiro faz login e pega o token:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin"}'
+```
+
+Resposta:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+Com o token, chama o `/predict` passando no header:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/predict" \
+  -H "Authorization: Bearer SEU_TOKEN_AQUI" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "gender": "Female",
+    "SeniorCitizen": 0,
+    "Partner": "Yes",
+    "Dependents": "No",
+    "tenure": 12,
+    "PhoneService": "Yes",
+    "MultipleLines": "No",
+    "InternetService": "Fiber optic",
+    "OnlineSecurity": "No",
+    "OnlineBackup": "Yes",
+    "DeviceProtection": "No",
+    "TechSupport": "No",
+    "StreamingTV": "Yes",
+    "StreamingMovies": "No",
+    "Contract": "Month-to-month",
+    "PaperlessBilling": "Yes",
+    "PaymentMethod": "Electronic check",
+    "MonthlyCharges": 89.10,
+    "TotalCharges": 1047.65
+  }'
+```
+
+Resposta:
+
+```json
+{
+  "prediction": "Yes",
+  "probability": 0.6871
+}
+```
+
+Para testar se o token está válido:
+
+```bash
+curl -X GET "http://127.0.0.1:8000/auth/me" \
+  -H "Authorization: Bearer SEU_TOKEN_AQUI"
+```
+
+No Swagger (`/docs`), clique em **Authorize**, cole o token e teste os endpoints protegidos por la.
