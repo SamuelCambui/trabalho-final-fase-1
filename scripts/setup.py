@@ -4,15 +4,16 @@ Setup automático do projeto Tech Challenge - Churn Prediction.
 Fluxo:
 
 1. Verifica Python
-2. Verifica requirements.txt
-3. Verifica/instala dependências
+2. Verifica pyproject.toml
+3. Instala as dependências do projeto através do pyproject.toml
 4. Localiza kaggle.json
 5. Configura credenciais do Kaggle
 6. Localiza o Kaggle CLI
 7. Valida autenticação
-8. Baixa o dataset
-9. Extrai os arquivos
-10. Valida os dados
+8. Cria os diretórios necessários
+9. Baixa o dataset
+10. Extrai os arquivos
+11. Valida os dados
 
 Uso:
 
@@ -24,13 +25,13 @@ Pré-requisito:
 
 Estrutura esperada:
 
-    tech-challenge-churn/
+    trabalho-final-fase-1/
     ├── kaggle.json
-    ├── requirements.txt
+    ├── pyproject.toml
     ├── scripts/
     │   └── setup.py
     ├── data/
-    └── ...
+    └── src/
 """
 
 from __future__ import annotations
@@ -50,13 +51,14 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+PYPROJECT_FILE = PROJECT_ROOT / "pyproject.toml"
+
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 
 KAGGLE_JSON = PROJECT_ROOT / "kaggle.json"
 
 KAGGLE_DIR = Path.home() / ".kaggle"
-
 KAGGLE_CONFIG = KAGGLE_DIR / "kaggle.json"
 
 # Dataset IBM Telco Customer Churn
@@ -70,18 +72,22 @@ MIN_PYTHON = (3, 11)
 # ============================================================
 
 def info(message: str) -> None:
+    """Exibe uma mensagem informativa."""
     print(f"[INFO] {message}")
 
 
 def success(message: str) -> None:
+    """Exibe uma mensagem de sucesso."""
     print(f"[OK] {message}")
 
 
 def warning(message: str) -> None:
+    """Exibe uma mensagem de aviso."""
     print(f"[AVISO] {message}")
 
 
 def error(message: str) -> None:
+    """Exibe uma mensagem de erro."""
     print(f"[ERRO] {message}")
 
 
@@ -92,6 +98,7 @@ def error(message: str) -> None:
 def run_command(
     command: list[str],
 ) -> subprocess.CompletedProcess[str]:
+    """Executa um comando no diretório raiz do projeto."""
 
     return subprocess.run(
         command,
@@ -108,6 +115,7 @@ def run_command(
 # ============================================================
 
 def check_python() -> None:
+    """Verifica se a versão do Python é compatível."""
 
     version = sys.version_info
 
@@ -117,10 +125,9 @@ def check_python() -> None:
     )
 
     if version < MIN_PYTHON:
-
         error(
             f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} "
-            f"ou superior é necessário."
+            "ou superior é necessário."
         )
 
         sys.exit(1)
@@ -129,23 +136,50 @@ def check_python() -> None:
 
 
 # ============================================================
-# 2. REQUIREMENTS
+# 2. PYPROJECT.TOML
 # ============================================================
 
-def install_requirements() -> None:
+def check_pyproject() -> None:
+    """Verifica se o pyproject.toml existe."""
 
-    requirements_file = PROJECT_ROOT / "requirements.txt"
+    info("Verificando pyproject.toml...")
 
-    if not requirements_file.exists():
-
+    if not PYPROJECT_FILE.exists():
         error(
-            "requirements.txt não encontrado."
+            "pyproject.toml não encontrado."
         )
+
+        print()
+        print(
+            "O arquivo deve estar na raiz do projeto:"
+        )
+
+        print()
+        print(
+            f"    {PYPROJECT_FILE}"
+        )
+
+        print()
 
         sys.exit(1)
 
+    success(
+        "pyproject.toml encontrado."
+    )
+
+
+# ============================================================
+# 3. INSTALAR DEPENDÊNCIAS
+# ============================================================
+
+def install_project() -> None:
+    """
+    Instala o projeto e suas dependências utilizando
+    exclusivamente o pyproject.toml.
+    """
+
     info(
-        "Instalando dependências do projeto..."
+        "Instalando o projeto e suas dependências..."
     )
 
     result = subprocess.run(
@@ -154,37 +188,44 @@ def install_requirements() -> None:
             "-m",
             "pip",
             "install",
-            "-r",
-            str(requirements_file),
+            "-e",
+            ".",
         ],
         cwd=PROJECT_ROOT,
     )
 
     if result.returncode != 0:
-
         error(
-            "Falha ao instalar as dependências."
+            "Falha ao instalar o projeto ou suas dependências."
         )
+
+        print()
+        print(
+            "Verifique as dependências definidas no "
+            "pyproject.toml."
+        )
+
+        print()
 
         sys.exit(1)
 
     success(
-        "Dependências instaladas."
+        "Projeto e dependências instalados com sucesso."
     )
 
 
 # ============================================================
-# 3. KAGGLE JSON
+# 4. KAGGLE JSON
 # ============================================================
 
 def configure_kaggle_credentials() -> None:
+    """Configura as credenciais do Kaggle."""
 
     info(
         "Procurando kaggle.json..."
     )
 
     if not KAGGLE_JSON.exists():
-
         error(
             "Arquivo kaggle.json não encontrado."
         )
@@ -203,6 +244,15 @@ def configure_kaggle_credentials() -> None:
         print(
             "O arquivo pode ser obtido nas configurações "
             "da sua conta do Kaggle."
+        )
+
+        print()
+        print(
+            "Acesse:"
+        )
+
+        print(
+            "    https://www.kaggle.com/settings/api"
         )
 
         print()
@@ -227,20 +277,17 @@ def configure_kaggle_credentials() -> None:
 
     # Linux/macOS
     if os.name != "nt":
-
         try:
-
             KAGGLE_CONFIG.chmod(0o600)
 
         except OSError:
-
             warning(
                 "Não foi possível alterar as permissões "
                 "do kaggle.json."
             )
 
     success(
-        f"Credenciais configuradas em:"
+        "Credenciais do Kaggle configuradas."
     )
 
     print(
@@ -249,10 +296,19 @@ def configure_kaggle_credentials() -> None:
 
 
 # ============================================================
-# 4. LOCALIZAR KAGGLE CLI
+# 5. LOCALIZAR KAGGLE CLI
 # ============================================================
 
 def find_kaggle_cli() -> Path | None:
+    """
+    Localiza o executável do Kaggle CLI.
+
+    Procura:
+
+    1. PATH do sistema
+    2. Diretório Scripts do Python atual
+    3. Instalações do Python da Microsoft Store no Windows
+    """
 
     # --------------------------------------------------------
     # 1. PATH
@@ -261,9 +317,7 @@ def find_kaggle_cli() -> Path | None:
     kaggle = shutil.which("kaggle")
 
     if kaggle:
-
         return Path(kaggle)
-
 
     # --------------------------------------------------------
     # 2. Scripts do Python atual
@@ -279,49 +333,41 @@ def find_kaggle_cli() -> Path | None:
     ]
 
     for candidate in candidates:
-
         if candidate.exists():
-
             return candidate
-
 
     # --------------------------------------------------------
     # 3. Windows / Microsoft Store
     # --------------------------------------------------------
 
     if os.name == "nt":
-
         local_app_data = os.environ.get(
             "LOCALAPPDATA"
         )
 
         if local_app_data:
-
             packages_dir = (
                 Path(local_app_data)
                 / "Packages"
             )
 
             if packages_dir.exists():
-
                 for candidate in packages_dir.glob(
                     "*/LocalCache/local-packages/"
                     "Python*/Scripts/kaggle.exe"
                 ):
-
                     if candidate.exists():
-
                         return candidate
-
 
     return None
 
 
 # ============================================================
-# 5. VALIDAR KAGGLE
+# 6. VALIDAR KAGGLE
 # ============================================================
 
 def check_kaggle() -> Path:
+    """Localiza e valida o Kaggle CLI."""
 
     info(
         "Localizando Kaggle CLI..."
@@ -330,20 +376,24 @@ def check_kaggle() -> Path:
     kaggle = find_kaggle_cli()
 
     if kaggle is None:
-
         error(
             "Kaggle CLI não encontrado."
         )
 
         print()
         print(
-            "Tente instalar novamente:"
+            "O pacote 'kaggle' deve estar definido "
+            "nas dependências do pyproject.toml."
         )
 
         print()
         print(
-            f"{sys.executable} -m pip "
-            "install --force-reinstall kaggle==2.2.4"
+            "Tente executar:"
+        )
+
+        print()
+        print(
+            f"{sys.executable} -m pip install -e ."
         )
 
         print()
@@ -351,13 +401,12 @@ def check_kaggle() -> Path:
         sys.exit(1)
 
     success(
-        f"Kaggle encontrado:"
+        "Kaggle CLI encontrado:"
     )
 
     print(
         f"    {kaggle}"
     )
-
 
     # --------------------------------------------------------
     # Versão
@@ -371,15 +420,15 @@ def check_kaggle() -> Path:
     )
 
     if result.returncode != 0:
-
         error(
             "Kaggle CLI foi encontrado, "
             "mas não pode ser executado."
         )
 
-        print(
-            result.stderr
-        )
+        if result.stderr:
+            print(
+                result.stderr
+            )
 
         sys.exit(1)
 
@@ -391,12 +440,13 @@ def check_kaggle() -> Path:
 
 
 # ============================================================
-# 6. VALIDAR AUTENTICAÇÃO
+# 7. VALIDAR AUTENTICAÇÃO
 # ============================================================
 
 def check_kaggle_authentication(
     kaggle: Path,
 ) -> None:
+    """Valida a autenticação da API do Kaggle."""
 
     info(
         "Validando autenticação do Kaggle..."
@@ -413,7 +463,6 @@ def check_kaggle_authentication(
     )
 
     if result.returncode == 0:
-
         success(
             "Autenticação do Kaggle validada."
         )
@@ -427,7 +476,6 @@ def check_kaggle_authentication(
     print()
 
     if result.stderr:
-
         print(
             result.stderr
         )
@@ -441,10 +489,11 @@ def check_kaggle_authentication(
 
 
 # ============================================================
-# 7. DIRETÓRIOS
+# 8. DIRETÓRIOS
 # ============================================================
 
 def create_directories() -> None:
+    """Cria os diretórios necessários para os dados."""
 
     info(
         "Criando diretórios do projeto..."
@@ -456,7 +505,7 @@ def create_directories() -> None:
     )
 
     success(
-        f"Diretório criado/verificado:"
+        "Diretório criado/verificado:"
     )
 
     print(
@@ -465,12 +514,13 @@ def create_directories() -> None:
 
 
 # ============================================================
-# 8. DOWNLOAD DATASET
+# 9. DOWNLOAD DATASET
 # ============================================================
 
 def download_dataset(
     kaggle: Path,
 ) -> None:
+    """Baixa o dataset do Kaggle."""
 
     info(
         f"Baixando dataset: {DATASET}"
@@ -492,13 +542,11 @@ def download_dataset(
     )
 
     if result.returncode != 0:
-
         error(
             "Falha ao baixar o dataset."
         )
 
         if result.stderr:
-
             print(
                 result.stderr
             )
@@ -511,17 +559,17 @@ def download_dataset(
 
 
 # ============================================================
-# 9. EXTRAIR ZIP
+# 10. EXTRAIR ZIP
 # ============================================================
 
 def extract_zip_files() -> None:
+    """Extrai arquivos ZIP encontrados em data/raw."""
 
     zip_files = list(
         RAW_DIR.glob("*.zip")
     )
 
     if not zip_files:
-
         return
 
     info(
@@ -529,7 +577,6 @@ def extract_zip_files() -> None:
     )
 
     for zip_file in zip_files:
-
         info(
             f"Extraindo {zip_file.name}..."
         )
@@ -538,7 +585,6 @@ def extract_zip_files() -> None:
             zip_file,
             "r",
         ) as zip_ref:
-
             zip_ref.extractall(
                 RAW_DIR
             )
@@ -549,10 +595,11 @@ def extract_zip_files() -> None:
 
 
 # ============================================================
-# 10. VALIDAR DATASET
+# 11. VALIDAR DATASET
 # ============================================================
 
 def validate_dataset() -> None:
+    """Valida a existência dos arquivos CSV."""
 
     info(
         "Validando arquivos do dataset..."
@@ -563,14 +610,13 @@ def validate_dataset() -> None:
     )
 
     if not csv_files:
-
         error(
             "Nenhum arquivo CSV foi encontrado."
         )
 
         print()
         print(
-            f"Diretório analisado:"
+            "Diretório analisado:"
         )
 
         print(
@@ -584,17 +630,17 @@ def validate_dataset() -> None:
     )
 
     for csv_file in csv_files:
-
         print(
             f"    └── {csv_file.name}"
         )
 
 
 # ============================================================
-# 11. RESUMO
+# 12. RESUMO
 # ============================================================
 
 def print_summary() -> None:
+    """Exibe o resumo da execução do setup."""
 
     print()
     print("=" * 60)
@@ -602,39 +648,31 @@ def print_summary() -> None:
     print("=" * 60)
 
     print()
-    print(
-        "Projeto:"
-    )
+    print("Projeto:")
 
     print(
         f"    {PROJECT_ROOT}"
     )
 
     print()
-    print(
-        "Dataset:"
-    )
+    print("Dataset:")
 
     print(
         f"    {DATASET}"
     )
 
     print()
-    print(
-        "Dados:"
-    )
+    print("Dados:")
 
     print(
         f"    {RAW_DIR}"
     )
 
     print()
-    print(
-        "Próximo passo:"
-    )
+    print("Próximo passo:")
 
     print(
-        "    jupyter lab"
+        "    python -m src.train_model.train"
     )
 
     print()
@@ -646,6 +684,7 @@ def print_summary() -> None:
 # ============================================================
 
 def main() -> None:
+    """Executa o processo completo de configuração."""
 
     print()
     print("=" * 60)
@@ -654,40 +693,44 @@ def main() -> None:
     print("=" * 60)
     print()
 
-    # 1
+    # 1. Python
     check_python()
 
-    # 2
-    install_requirements()
+    # 2. pyproject.toml
+    check_pyproject()
 
-    # 3
+    # 3. Dependências
+    install_project()
+
+    # 4. Credenciais Kaggle
     configure_kaggle_credentials()
 
-    # 4 e 5
+    # 5. Kaggle CLI
     kaggle = check_kaggle()
 
-    # 6
+    # 6. Autenticação
     check_kaggle_authentication(
         kaggle
     )
 
-    # 7
+    # 7. Diretórios
     create_directories()
 
-    # 8
+    # 8. Download
     download_dataset(
         kaggle
     )
 
-    # 9
+    # 9. Extração
     extract_zip_files()
 
-    # 10
+    # 10. Validação
     validate_dataset()
 
-    # 11
+    # 11. Resumo
     print_summary()
 
 
 if __name__ == "__main__":
     main()
+
