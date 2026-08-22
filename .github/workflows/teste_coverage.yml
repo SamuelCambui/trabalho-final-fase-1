@@ -56,6 +56,15 @@ jobs:
         run: |
             ls -la data/raw
 
+      - name: Treinar modelo
+        run: |
+          uv run python -m src.train_model.train 
+          
+      - name: Verificar modelo
+        run: |
+            ls -lh models/
+            test -f models/model.joblib      
+
       - name: Executar testes com cobertura
         run: |
             uv run pytest \
