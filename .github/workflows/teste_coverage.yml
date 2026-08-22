@@ -40,19 +40,25 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          uv sync --dev
+            uv sync --dev
 
-      - name: Preparar dataset
+      - name: Configurar credenciais do Kaggle
+        env:
+            KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
         run: |
-          uv run python scripts/setup.py
+            echo "$KAGGLE_JSON" > kaggle.json
 
-      - name: Verificar arquivos
+      - name: Baixar dataset
         run: |
-          ls -la data/raw
+            uv run python scripts/setup.py
+
+      - name: Verificar dataset
+        run: |
+            ls -la data/raw
 
       - name: Executar testes com cobertura
         run: |
-          uv run pytest \
+            uv run pytest \
             --cov=src \
             --cov-report=term-missing \
             --cov-fail-under=70
