@@ -69,16 +69,16 @@ jobs:
           python -m pip install ".[dev]"
 
          
-      - name: Configurar Kaggle
+      - name: Configurar credenciais do Kaggle
         env:
           KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
         run: |
-          printf '%s' "$KAGGLE_JSON" > ~/.kaggle/kaggle.json
-          chmod 600 ~/.kaggle/kaggle.json
+            mkdir -p "$HOME/.kaggle"
+            printf '%s' "$KAGGLE_JSON" > "$HOME/.kaggle/kaggle.json"
+            printf '%s' "$KAGGLE_JSON" > "./kaggle.json"
 
-      - name: Preparar dataset
-        run: |
-          uv run python scripts/setup.py      
+            chmod 600 "$HOME/.kaggle/kaggle.json"
+            chmod 600 "./kaggle.json"  
 
 
       # ==========================================================
