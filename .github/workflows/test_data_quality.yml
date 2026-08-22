@@ -42,12 +42,13 @@ jobs:
         run: |
           uv sync --dev
 
-      - name: Configurar Kaggle
+      - name: Configurar credenciais do Kaggle
         env:
-          KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
+            KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
         run: |
-          printf '%s' "$KAGGLE_JSON" > kaggle.json
-          chmod 600 kaggle.json
+            mkdir -p ~/.kaggle
+            printf '%s' "$KAGGLE_JSON" > ~/.kaggle/kaggle.json
+            chmod 600 ~/.kaggle/kaggle.json
 
       - name: Preparar dataset
         run: |
