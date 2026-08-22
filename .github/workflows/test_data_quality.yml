@@ -1,0 +1,70 @@
+name: Data Quality
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+
+  data-quality:
+
+    name: Qualidade dos Dados
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verificar uv
+        run: |
+          uv --version
+
+      - name: Instalar dependências
+        run: |
+            uv sync --dev
+
+      - name: Configurar credenciais do Kaggle
+        env:
+            KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
+        run: |
+            if [ -z "$KAGGLE_JSON" ]; then
+            echo "[ERRO] Secret KAGGLE_JSON não está configurado."
+            exit 1
+            fi
+
+            printf '%s' "$KAGGLE_JSON" > "$GITHUB_WORKSPACE/kaggle.json"
+            chmod 600 "$GITHUB_WORKSPACE/kaggle.json"
+
+            echo "[OK] kaggle.json criado na raiz do projeto."
+
+      - name: Validar credenciais
+        run: |
+            if [ ! -f "$GITHUB_WORKSPACE/kaggle.json" ]; then
+            echo "[ERRO] kaggle.json não foi criado."
+            exit 1
+            fi
+
+            echo "[OK] kaggle.json encontrado."
+
+      - name: Preparar projeto
+        run: |
+            uv run python scripts/setup.py

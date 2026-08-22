@@ -1,11 +1,9 @@
 """Ponto de entrada da aplicação FastAPI."""
 
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
-
-from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from src.api.config import (
     API_DESCRIPTION,
@@ -21,14 +19,7 @@ from src.api.routers import (
     auth_router,
 )
 
-
-# ==========================================
-# TEMPLATES HTML
-# ==========================================
-
-templates = Jinja2Templates(
-    directory="src/api/templates"
-)
+from src.api.templates.index import get_home_page
 
 
 # ==========================================
@@ -59,7 +50,7 @@ app = FastAPI(
 
 
 # ==========================================
-# ROTA DA INTERFACE
+# INTERFACE
 # ==========================================
 
 @app.get(
@@ -67,12 +58,10 @@ app = FastAPI(
     response_class=HTMLResponse,
     include_in_schema=False,
 )
-async def home(request: Request):
+async def home() -> HTMLResponse:
+    """Exibe a interface web."""
 
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-    )
+    return get_home_page()
 
 
 # ==========================================
