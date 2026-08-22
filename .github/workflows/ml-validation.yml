@@ -1,0 +1,69 @@
+name: ML Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+
+jobs:
+
+  ml-validation:
+
+    name: Validar Dados e Modelo
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ==========================================================
+      # CHECKOUT
+      # ==========================================================
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      # ==========================================================
+      # PYTHON
+      # ==========================================================
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+
+      # ==========================================================
+      # DEPENDÊNCIAS
+      # ==========================================================
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+
+
+      # ==========================================================
+      # TESTES
+      # ==========================================================
+
+      - name: Executar testes
+        run: |
+          pytest -v
+
+
+      # ==========================================================
+      # QUALIDADE DO MODELO
+      # ==========================================================
+
+      - name: Validar métricas do modelo
+        run: |
+          pytest tests/test_model_metrics.py -v
