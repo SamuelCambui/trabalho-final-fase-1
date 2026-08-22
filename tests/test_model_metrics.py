@@ -1,12 +1,26 @@
-
 """Testes das métricas mínimas esperadas para o modelo."""
 
-import numpy as np
+from pathlib import Path
 
+import pandas as pd
 from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
 
 from src.train_model.config import BEST_MODEL_PATH
-from src.train_model.model import load_model
+from src.train_model.preprocessing import (
+    clean_data,
+    prepare_features_target,
+)
+from src.train_model.utils import load_model
+
+
+# ============================================================
+# CONFIGURAÇÃO
+# ============================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+DATA_PATH = PROJECT_ROOT / "data" / "raw" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
 
 
 # ============================================================
@@ -32,15 +46,55 @@ MIN_WEIGHTED_RECALL = 0.60
 MIN_WEIGHTED_F1 = 0.60
 
 
-def test_model_metrics(
-    X_test,
-    y_test,
-):
+def test_model_metrics():
     """Valida se o modelo atende às métricas mínimas."""
+
+    # ========================================================
+    # CARREGAR DADOS
+    # ========================================================
+
+    if not DATA_PATH.exists():
+        raise FileNotFoundError(
+            f"Dataset não encontrado: {DATA_PATH}"
+        )
+
+    df = pd.read_csv(DATA_PATH)
+
+    # ========================================================
+    # PREPROCESSAMENTO
+    # ========================================================
+
+    df = clean_data(df)
+
+    X, y = prepare_features_target(df)
+
+    # ========================================================
+    # SEPARAÇÃO DOS DADOS
+    # ========================================================
+
+    _, X_test, _, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        random_state=42,
+        stratify=y,
+    )
+
+    # ========================================================
+    # CARREGAR MODELO
+    # ========================================================
 
     model = load_model(BEST_MODEL_PATH)
 
+    # ========================================================
+    # PREDIÇÃO
+    # ========================================================
+
     predictions = model.predict(X_test)
+
+    # ========================================================
+    # RELATÓRIO
+    # ========================================================
 
     report = classification_report(
         y_test,
@@ -48,6 +102,10 @@ def test_model_metrics(
         output_dict=True,
         zero_division=0,
     )
+
+    # ========================================================
+    # MÉTRICAS
+    # ========================================================
 
     metrics = {
         "precision_class_0":
@@ -90,6 +148,10 @@ def test_model_metrics(
             report["weighted avg"]["f1-score"],
     }
 
+    # ========================================================
+    # LIMITES MÍNIMOS
+    # ========================================================
+
     minimums = {
         "precision_class_0":
             MIN_PRECISION_CLASS_0,
@@ -130,6 +192,10 @@ def test_model_metrics(
         "weighted_f1":
             MIN_WEIGHTED_F1,
     }
+
+    # ========================================================
+    # QUALITY GATE
+    # ========================================================
 
     failures = []
 
