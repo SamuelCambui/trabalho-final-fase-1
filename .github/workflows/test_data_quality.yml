@@ -40,7 +40,7 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          uv sync --extra dev
+          uv sync --dev
 
       - name: Configurar Kaggle
         env:
