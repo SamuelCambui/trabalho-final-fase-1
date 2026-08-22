@@ -11,7 +11,6 @@ on:
       - main
       - develop
 
-
 jobs:
 
   ml-validation:
@@ -38,7 +37,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: "pip"
+
 
       # ==========================================================
       # UV
@@ -65,20 +64,79 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install ".[dev]"
+          uv sync --dev
 
-         
+
+      # ==========================================================
+      # KAGGLE
+      # ==========================================================
+
       - name: Configurar credenciais do Kaggle
         env:
           KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
         run: |
-            mkdir -p "$HOME/.kaggle"
-            printf '%s' "$KAGGLE_JSON" > "$HOME/.kaggle/kaggle.json"
-            printf '%s' "$KAGGLE_JSON" > "./kaggle.json"
+          if [ -z "$KAGGLE_JSON" ]; then
+            echo "[ERRO] Secret KAGGLE_JSON não configurado."
+            exit 1
+          fi
 
-            chmod 600 "$HOME/.kaggle/kaggle.json"
-            chmod 600 "./kaggle.json"  
+          mkdir -p "$HOME/.kaggle"
+
+          printf '%s' "$KAGGLE_JSON" > "$HOME/.kaggle/kaggle.json"
+          printf '%s' "$KAGGLE_JSON" > "$GITHUB_WORKSPACE/kaggle.json"
+
+          chmod 600 "$HOME/.kaggle/kaggle.json"
+          chmod 600 "$GITHUB_WORKSPACE/kaggle.json"
+
+          echo "[OK] Credenciais do Kaggle configuradas."
+
+
+      # ==========================================================
+      # PREPARAR DATASET
+      # ==========================================================
+
+      - name: Preparar projeto
+        run: |
+          uv run python scripts/setup.py
+
+
+      # ==========================================================
+      # VALIDAR DATASET
+      # ==========================================================
+
+      - name: Validar dataset
+        run: |
+          echo "Verificando dataset..."
+
+          test -f "data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv"
+
+          echo "[OK] Dataset encontrado."
+
+          ls -lh data/raw/
+
+
+      # ==========================================================
+      # TREINAR MODELO
+      # ==========================================================
+
+      - name: Treinar modelo
+        run: |
+          uv run python -m src.train_model.train
+
+
+      # ==========================================================
+      # VALIDAR MODELO GERADO
+      # ==========================================================
+
+      - name: Validar modelo
+        run: |
+          echo "Verificando modelo..."
+
+          test -f "models/model.joblib"
+
+          echo "[OK] Modelo encontrado."
+
+          ls -lh models/model.joblib
 
 
       # ==========================================================
@@ -87,11 +145,13 @@ jobs:
 
       - name: Executar testes
         run: |
-          uv run pytest -v
+          uv run pytest tests/ -v
+
+
       # ==========================================================
       # QUALIDADE DO MODELO
       # ==========================================================
 
       - name: Validar métricas do modelo
         run: |
-          pytest tests/test_model_metrics.py -v
+          uv run pytest tests/test_model_metrics.py -v
