@@ -44,4 +44,4 @@ jobs:
 
       - name: Testar API
         run: |
-          uv run pytest tests/test_api.py -v'
+          uv run pytest tests/test_api.py -v

@@ -73,7 +73,6 @@ jobs:
         env:
           KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
         run: |
-          mkdir -p ~/.kaggle
           printf '%s' "$KAGGLE_JSON" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
 
