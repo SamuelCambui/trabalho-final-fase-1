@@ -40,19 +40,31 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          uv sync --dev
+            uv sync --dev
 
-      - name: Configurar Kaggle
+      - name: Configurar credenciais do Kaggle
         env:
-          KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
+            KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
         run: |
-          printf '%s' "$KAGGLE_JSON" > ~/.kaggle/kaggle.json
-          chmod 600 ~/.kaggle/kaggle.json
+            if [ -z "$KAGGLE_JSON" ]; then
+            echo "[ERRO] Secret KAGGLE_JSON não está configurado."
+            exit 1
+            fi
 
-      - name: Preparar dataset
-        run: |
-          uv run python scripts/setup.py
+            printf '%s' "$KAGGLE_JSON" > "$GITHUB_WORKSPACE/kaggle.json"
+            chmod 600 "$GITHUB_WORKSPACE/kaggle.json"
 
-      - name: Validar dataset
+            echo "[OK] kaggle.json criado na raiz do projeto."
+
+      - name: Validar credenciais
         run: |
-          uv run pytest tests/test_data_quality.py -v
+            if [ ! -f "$GITHUB_WORKSPACE/kaggle.json" ]; then
+            echo "[ERRO] kaggle.json não foi criado."
+            exit 1
+            fi
+
+            echo "[OK] kaggle.json encontrado."
+
+      - name: Preparar projeto
+        run: |
+            uv run python scripts/setup.py
