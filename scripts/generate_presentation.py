@@ -106,9 +106,9 @@ for i, label in enumerate(["EDA", "MODELOS", "API"]):
     box(slide, 9.8, 4.0 + i * 0.55, 1.95, 0.34, WHITE if i == 0 else NAVY, True, WHITE)
     text(slide, label, 9.8, 4.05 + i * 0.55, 1.95, 0.18, 10, NAVY if i == 0 else WHITE, True, align=PP_ALIGN.CENTER)
 text(slide, "Predição de churn\npara retenção de clientes", 0.75, 1.35, 7.3, 1.35, 34, WHITE, True, font="Aptos Display")
-text(slide, "Apresentação das etapas realizadas até o momento", 0.78, 3.05, 6.5, 0.45, 18, MINT)
+text(slide, "Apresentação da análise revisada", 0.78, 3.05, 6.5, 0.45, 18, MINT)
 text(slide, "Um pipeline de Machine Learning: exploração, comparação de modelos, inferência e documentação.", 0.78, 4.12, 6.8, 0.75, 16, WHITE)
-text(slide, "21/08/2026", 0.78, 6.62, 2, 0.25, 11, MINT, True)
+text(slide, "23/08/2026", 0.78, 6.62, 2, 0.25, 11, MINT, True)
 
 # 2
 slide = add_slide("Visão geral", "O projeto percorre o ciclo completo de ML", 2)
@@ -127,7 +127,7 @@ for i, (number, name, desc, color) in enumerate(steps):
     text(slide, desc, x + 0.18, 3.45, 2.25, 0.75, 13, MUTED)
     box(slide, x + 0.18, 4.22, 0.55, 0.07, color)
 text(slide, "Leitura executiva", 0.7, 5.35, 2.2, 0.3, 13, TEAL, True)
-text(slide, "A fundação técnica está estruturada. As principais pendências estão na consolidação experimental do baseline, na execução do ambiente e na finalização da entrega audiovisual.", 0.7, 5.72, 11.8, 0.65, 18, INK, True)
+text(slide, "A fundação técnica está estruturada. A análise foi corrigida para ser reproduzível, mas as células e os resultados finais ainda precisam ser reexecutados no ambiente com o dataset.", 0.7, 5.72, 11.8, 0.65, 18, INK, True)
 
 # 3
 slide = add_slide("Etapa 1", "O problema de negócio orienta a priorização de retenção", 3, dark=True)
@@ -140,7 +140,7 @@ box(slide, 6.75, 1.55, 5.85, 4.75, MINT, True, MINT)
 text(slide, "MÉTRICAS E VALOR", 7.1, 1.9, 3.0, 0.25, 11, NAVY, True)
 text(slide, "ROC-AUC + recall de churn", 7.1, 2.3, 4.7, 0.45, 23, NAVY, True, font="Aptos Display")
 bullet_list(slide, ["ROC-AUC para seleção técnica", "Recall para reduzir falsos negativos", "Retenção mensal como KPI de negócio", "Custo de abordagem versus custo de perda"], 7.1, 3.15, 4.7, 1.8, 15, NAVY)
-text(slide, "O ML Canvas existe, mas precisa ser alinhado aos números e ao protocolo final do projeto.", 7.1, 5.65, 4.8, 0.35, 12, NAVY, True)
+text(slide, "A métrica técnica e o objetivo operacional precisam ser avaliados juntos.", 7.1, 5.65, 4.8, 0.35, 12, NAVY, True)
 
 # 4
 slide = add_slide("Etapa 1", "A EDA revela um problema de churn moderadamente desbalanceado", 4)
@@ -156,7 +156,7 @@ text(slide, "Padrões observados", 1.0, 3.78, 2.5, 0.3, 16, INK, True)
 bullet_list(slide, ["Churn: 17,98 meses de permanência média", "Não churn: 37,57 meses de permanência média", "Contrato mensal: 42,71% de churn", "Contrato de dois anos: 2,83% de churn"], 1.0, 4.25, 4.95, 1.25, 14, INK)
 box(slide, 6.8, 3.45, 5.8, 2.3, PALE_ORANGE, True, PALE_ORANGE)
 text(slide, "Qualidade e cuidados", 7.1, 3.78, 2.8, 0.3, 16, INK, True)
-bullet_list(slide, ["TotalCharges precisa ser convertido para numérico", "customerID é removido do treinamento", "Relações são descritivas, não causais", "Notebook tem caminho absoluto e célula com erro"], 7.1, 4.25, 4.95, 1.25, 14, INK)
+bullet_list(slide, ["TotalCharges é convertido e linhas inválidas são removidas", "customerID é removido de forma repetível", "Relações são descritivas, não causais", "Saídas persistidas ainda precisam de reexecução"], 7.1, 4.25, 4.95, 1.25, 14, INK)
 
 # 5
 slide = add_slide("Etapa 2", "O pré-processamento foi encapsulado no pipeline", 5, dark=True)
@@ -166,7 +166,7 @@ flow = [
     ("Limpeza", "TotalCharges\n+ ID", ORANGE),
     ("Split", "70 / 30\nestratificado", TEAL),
     ("Pipeline", "imputação\n+ encoding", ORANGE),
-    ("Modelo", "RF / MLP", TEAL),
+    ("Modelo", "Logística / RF / MLP", TEAL),
 ]
 for i, (name, desc, color) in enumerate(flow):
     x = 0.75 + i * 2.45
@@ -187,11 +187,12 @@ slide = add_slide("Etapa 2", "A decisão do modelo depende do objetivo da opera�
 text(slide, "Validação cruzada", 0.7, 1.5, 2.8, 0.3, 14, MUTED)
 # table
 x0, y0 = 0.7, 2.0
-col_widths = [3.0, 2.2, 2.1, 2.1, 2.1]
-headers = ["Modelo", "ROC-AUC CV", "Accuracy", "Recall", "F1"]
+col_widths = [3.0, 2.2, 6.3]
+headers = ["Modelo", "ROC-AUC CV", "Status"]
 rows = [
-    ["MLP", "0,8481", "0,7948", "0,5223", "0,5751"],
-    ["Random Forest", "0,8477", "0,7502", "0,7790", "0,6238"],
+    ["MLP", "0,8481", "registrada no CSV modular"],
+    ["Random Forest", "0,8477", "registrada no CSV modular"],
+    ["Logística", "0,8456", "saída histórica do notebook"],
 ]
 for j, (head, width) in enumerate(zip(headers, col_widths)):
     box(slide, x0 + sum(col_widths[:j]), y0, width, 0.55, NAVY)
@@ -199,14 +200,14 @@ for j, (head, width) in enumerate(zip(headers, col_widths)):
 for i, row in enumerate(rows):
     y = y0 + 0.58 + i * 0.62
     for j, (value, width) in enumerate(zip(row, col_widths)):
-        fill = MINT if (i == 0 and j == 1) or (i == 1 and j in (3, 4)) else WHITE
+        fill = MINT if (i == 0 and j == 1) else WHITE
         box(slide, x0 + sum(col_widths[:j]), y, width, 0.58, fill, False, CREAM)
         text(slide, value, x0 + sum(col_widths[:j]) + 0.08, y + 0.16, width - 0.16, 0.2, 14, INK, j == 0 or fill == MINT, align=PP_ALIGN.CENTER)
-text(slide, "Leitura para o negócio", 0.7, 4.15, 3.0, 0.3, 16, TEAL, True)
-bullet_list(slide, ["MLP: mais accuracy e precision; menos recall", "Random Forest: identifica mais clientes que podem cancelar", "A regra técnica escolhe MLP, mas a regra operacional pode preferir RF", "Próximo passo: calibrar threshold com custos reais"], 0.7, 4.58, 7.3, 1.35, 15, INK)
+text(slide, "Leitura para o negócio", 0.7, 4.82, 3.0, 0.3, 16, TEAL, True)
+bullet_list(slide, ["A MLP lidera a CV por apenas 0,0004", "A diferença é menor que a variabilidade dos folds", "A comparação de teste depende da execução revisada", "Próximo passo: calibrar threshold com custos reais"], 0.7, 5.25, 8.0, 1.0, 14, INK)
 box(slide, 9.0, 4.15, 3.55, 1.8, PALE_ORANGE, True, PALE_ORANGE)
 text(slide, "Resultado", 9.3, 4.48, 1.5, 0.25, 12, ORANGE, True)
-text(slide, "MLP selecionada\npara a API", 9.3, 4.88, 2.9, 0.6, 22, INK, True, font="Aptos Display")
+text(slide, "MLP selecionada\npela regra de CV", 9.3, 4.88, 2.9, 0.6, 22, INK, True, font="Aptos Display")
 
 # 7
 slide = add_slide("Etapa 3", "A API transforma o modelo em um serviço consumível", 7, dark=True)
@@ -228,7 +229,7 @@ text(slide, "RESPOSTA", 9.65, 2.0, 2.5, 0.25, 11, PALE_ORANGE, True, align=PP_AL
 text(slide, "Classe", 9.65, 2.85, 2.5, 0.3, 16, WHITE, True, align=PP_ALIGN.CENTER)
 text(slide, "Yes / No", 9.65, 3.25, 2.5, 0.42, 24, ORANGE, True, font="Aptos Display", align=PP_ALIGN.CENTER)
 text(slide, "Probabilidade", 9.65, 4.2, 2.5, 0.3, 16, WHITE, True, align=PP_ALIGN.CENTER)
-text(slide, "0,6871", 9.65, 4.62, 2.5, 0.42, 24, MINT, True, font="Aptos Display", align=PP_ALIGN.CENTER)
+text(slide, "valor depende\ndo cliente", 9.65, 4.62, 2.5, 0.42, 16, MINT, True, font="Aptos Display", align=PP_ALIGN.CENTER)
 
 # 8
 slide = add_slide("Etapa 4", "A documentação registra desempenho, limites e uso responsável", 8)
@@ -244,15 +245,15 @@ for i, (name, desc, color) in enumerate(items):
     text(slide, name, 1.5, y + 0.25, 2.2, 0.3, 18, INK, True, font="Aptos Display")
     text(slide, desc, 3.8, y + 0.28, 7.95, 0.4, 15, MUTED)
 box(slide, 0.8, 6.15, 11.75, 0.58, PALE_ORANGE, True, PALE_ORANGE)
-text(slide, "A documentação está mais madura que a execução local: os artefatos `.joblib`, dependências instaladas e vídeo ainda precisam ser finalizados.", 1.1, 6.33, 11.1, 0.2, 13, INK, True, align=PP_ALIGN.CENTER)
+text(slide, "A documentação está mais madura que a execução local: é necessário instalar dependências, disponibilizar o dataset, reexecutar o notebook e confirmar os artefatos `.joblib`.", 1.1, 6.33, 11.1, 0.2, 13, INK, True, align=PP_ALIGN.CENTER)
 
 # 9
 slide = add_slide("Próximos passos", "Seis ações fecham as lacunas da entrega", 9, dark=True)
 next_steps = [
-    ("01", "Alinhar o ML Canvas", "corrigir split, métricas e meta de negócio"),
-    ("02", "Consolidar o baseline", "incluir Logistic Regression no relatório modular"),
-    ("03", "Preparar o ambiente", "instalar dependências e executar pytest"),
-    ("04", "Gerar artefatos", "treinar e validar model.joblib"),
+    ("01", "Executar o notebook", "baixar o dataset e rodar todas as células em ordem"),
+    ("02", "Consolidar o baseline", "registrar Logística, RF e MLP no mesmo relatório"),
+    ("03", "Validar a decisão", "comparar teste, threshold e custos de negócio"),
+    ("04", "Gerar artefatos", "treinar e confirmar model.joblib"),
     ("05", "Ampliar testes", "cobrir login inválido e /predict"),
     ("06", "Finalizar vídeo", "gravar, revisar e anexar o STAR"),
 ]
@@ -276,7 +277,7 @@ text(slide, "Status: base técnica sólida, entrega final ainda parcial.", 1.1, 
 box(slide, 8.45, 1.6, 4.1, 4.55, MINT, True, MINT)
 text(slide, "MENSAGEM PRINCIPAL", 8.8, 1.98, 3.1, 0.25, 11, NAVY, True)
 text(slide, "A melhor decisão não é apenas o maior ROC-AUC.", 8.8, 2.55, 3.25, 1.05, 25, NAVY, True, font="Aptos Display")
-text(slide, "É o modelo e o threshold que melhor equilibram retenção, custo de abordagem e revisão humana.", 8.8, 4.05, 3.15, 0.85, 16, NAVY)
+text(slide, "É o modelo e o threshold que melhor equilibram retenção, custo de abordagem e revisão humana, após a reexecução do notebook.", 8.8, 4.05, 3.15, 0.85, 16, NAVY)
 text(slide, "Obrigado", 8.8, 5.48, 2.2, 0.3, 16, TEAL, True)
 
 # Add speaker-note-like source footers in the slide XML is unnecessary; references are visible in the deck content.
