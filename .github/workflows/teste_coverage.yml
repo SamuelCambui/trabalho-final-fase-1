@@ -1,0 +1,73 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+
+  tests:
+
+    name: Testes e Cobertura
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verificar uv
+        run: |
+          uv --version
+
+      - name: Instalar dependências
+        run: |
+            uv sync --dev
+
+      - name: Configurar credenciais do Kaggle
+        env:
+            KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
+        run: |
+            echo "$KAGGLE_JSON" > kaggle.json
+
+      - name: Baixar dataset
+        run: |
+            uv run python scripts/setup.py
+
+      - name: Verificar dataset
+        run: |
+            ls -la data/raw
+
+      - name: Treinar modelo
+        run: |
+          uv run python -m src.train_model.train 
+          
+      - name: Verificar modelo
+        run: |
+            ls -lh models/
+            test -f models/model.joblib      
+
+      - name: Executar testes com cobertura
+        run: |
+            uv run pytest \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-fail-under=60

@@ -107,17 +107,31 @@ Os arquivos CSV brutos e os artefatos `.joblib` são ignorados pelo Git. Cada am
 git clone https://github.com/SamuelCambui/trabalho-final-fase-1.git
 cd trabalho-final-fase-1
 
-python3.13 -m venv .venv
+Crie um ambiente virtual Python:
+
+py -3.13 -m venv .venv 
+
+Ative o ambiente virtual.
+
+No Linux/macOS:
+
 source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
 
-No Windows PowerShell, ative o ambiente com:
+No Windows PowerShell:
 
-```powershell
 .venv\Scripts\Activate.ps1
-```
+
+No Windows CMD:
+
+.venv\Scripts\activate.bat
+
+Após ativar o ambiente, atualize o pip:
+
+python -m pip install --upgrade pip
+
+Agora vamos baixar todas as dependencias
+
+python -m pip install pyproject.toml
 
 ### Download do dataset
 
