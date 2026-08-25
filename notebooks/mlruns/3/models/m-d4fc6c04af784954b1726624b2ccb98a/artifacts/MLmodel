@@ -1,0 +1,24 @@
+artifact_path: file:c:/Users/Samuel/Documents/Trabalho Final Fase 1/Trabalho Final
+  - Fase 1/notebooks/mlruns/3/models/m-d4fc6c04af784954b1726624b2ccb98a/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.13.14
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.0
+    skops_trusted_types: null
+mlflow_version: 3.15.1
+model_id: m-d4fc6c04af784954b1726624b2ccb98a
+model_size_bytes: 35490007
+model_uuid: m-d4fc6c04af784954b1726624b2ccb98a
+prompts: null
+run_id: e228316c774643168aea9cb879dff63e
+utc_time_created: '2026-08-21 17:14:48.131172'

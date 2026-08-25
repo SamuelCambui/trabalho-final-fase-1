@@ -1,0 +1,24 @@
+artifact_path: file:c:/Users/Samuel/Documents/Trabalho Final Fase 1/Trabalho Final
+  - Fase 1/notebooks/mlruns/3/models/m-c8248663dfec4f37aa60053f14641d7c/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.14
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: pickle
+    sklearn_version: 1.9.0
+    skops_trusted_types: null
+mlflow_version: 3.15.1
+model_id: m-c8248663dfec4f37aa60053f14641d7c
+model_size_bytes: 2134
+model_uuid: m-c8248663dfec4f37aa60053f14641d7c
+prompts: null
+run_id: 6e45a9b1b22e403ba9d0168a9204da72
+utc_time_created: '2026-08-21 20:39:21.549015'
