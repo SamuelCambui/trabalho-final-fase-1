@@ -5,16 +5,24 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from src.train_model.config import BEST_MODEL_PATH
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
 
 API_TITLE = "Customer Churn Prediction API"
-API_DESCRIPTION = "API para previsão de churn de clientes Telco."
-API_VERSION = "1.0.0"
+API_DESCRIPTION = (
+    "API para previsão de churn de clientes Telco "
+    "(modelo campeão: Logistic Regression, notebook de modelagem)."
+)
+API_VERSION = "1.1.0"
 
-MODEL_PATH: Path = BEST_MODEL_PATH
+# Artefato do notebook modelagem_avaliacao_churn_prediction.ipynb
+CHAMPION_MODEL_PATH = (
+    PROJECT_ROOT / "notebooks" / "models" / "champion_model.joblib"
+)
+MODEL_PATH: Path = Path(
+    os.getenv("MODEL_PATH", str(CHAMPION_MODEL_PATH))
+)
+
 PREDICTION_THRESHOLD = 0.5
 PROBABILITY_DECIMALS = 4
 

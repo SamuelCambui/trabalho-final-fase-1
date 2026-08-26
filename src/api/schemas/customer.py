@@ -1,10 +1,16 @@
-"""Schema de entrada com os atributos do cliente Telco."""
+"""Schema de entrada com os atributos brutos do cliente Telco.
+
+O payload espelha o formulário/UI. Campos usados na engenharia de features
+do modelo campeão (LR): tenure, MonthlyCharges, TotalCharges, Contract,
+PaymentMethod, InternetService, PaperlessBilling e os 6 serviços add-on.
+Demais campos são aceitos por compatibilidade com a interface.
+"""
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class CustomerRequest(BaseModel):
-    """Dados do cliente usados como features pelo modelo treinado."""
+    """Dados brutos do cliente; a API deriva as 18 features do champion."""
 
     model_config = ConfigDict(
         json_schema_extra={

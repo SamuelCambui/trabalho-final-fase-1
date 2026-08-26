@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
+import joblib
 from sklearn.base import BaseEstimator
 from sklearn.pipeline import Pipeline
 
-from src.train_model.utils import load_model
+from src.api.services.feature_engineering import transform_customer_features
 
 
 class ChurnPredictorService:
-    """Encapsula o pipeline serializado e a lógica de inferência."""
+    """Encapsula o pipeline campeão e a lógica de inferência."""
 
     def __init__(
         self,
@@ -39,7 +39,7 @@ class ChurnPredictorService:
     def load(self) -> None:
         """Carrega o pipeline treinado a partir do disco."""
         try:
-            self._model = load_model(self.model_path)
+            self._model = joblib.load(self.model_path)
             self._load_error = None
         except Exception as exc:
             self._model = None
@@ -51,9 +51,10 @@ class ChurnPredictorService:
             return "unknown"
 
         if isinstance(self._model, Pipeline):
-            classifier = self._model.named_steps.get("classifier")
-            if classifier is not None:
-                return type(classifier).__name__
+            for step_name in ("model", "classifier"):
+                estimator = self._model.named_steps.get(step_name)
+                if estimator is not None:
+                    return type(estimator).__name__
 
         return type(self._model).__name__
 
@@ -61,8 +62,11 @@ class ChurnPredictorService:
         """
         Gera predição de churn para um único cliente.
 
+        Aplica a engenharia de features do notebook e usa o pipeline
+        ``StandardScaler`` + ``LogisticRegression``.
+
         Args:
-            customer_data: Dicionário com as features do cliente.
+            customer_data: Dicionário com as features brutas do cliente Telco.
 
         Raises:
             RuntimeError: Se o modelo não estiver carregado.
@@ -76,9 +80,8 @@ class ChurnPredictorService:
                 f"Modelo não carregado: {self._load_error or 'arquivo ausente'}"
             )
 
-        features = pd.DataFrame([customer_data])
-
         try:
+            features = transform_customer_features(customer_data)
             probability = float(self._model.predict_proba(features)[0][1])
         except Exception as exc:
             raise ValueError(f"Erro durante a predição: {exc}") from exc
