@@ -95,7 +95,8 @@ Não foi observada diferença superior a 2 pontos percentuais nesse recorte. Iss
 │   ├── MODEL_CARD.md
 │   ├── VIDEO_STAR.md
 │   └── MLCanvas.docx
-├── models/                         # saídas do treinamento modular
+├── models/
+│   └── comparison_results.csv      # tabela definitiva dos três modelos
 ├── notebooks/
 │   ├── eda_churn_prediction.ipynb
 │   ├── fairness_churn_prediction.ipynb
