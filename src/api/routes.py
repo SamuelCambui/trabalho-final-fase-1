@@ -1,73 +1,35 @@
-from pathlib import Path
+"""Rotas legadas — não montadas por ``main.py``.
 
-import joblib
-import pandas as pd
+Mantidas apenas por compatibilidade. Preferir ``src.api.routers``.
+"""
 
 from fastapi import APIRouter, HTTPException
 
-from src.api.schemas import (
-    CustomerRequest,
-    PredictionResponse,
-)
-
+from src.api.config import MODEL_PATH, PREDICTION_THRESHOLD, PROBABILITY_DECIMALS
+from src.api.schemas import CustomerRequest, PredictionResponse
+from src.api.services.churn_predictor import ChurnPredictorService
 
 router = APIRouter()
 
-
-MODEL_PATH = (
-    Path(__file__).resolve()
-    .parents[2]
-    / "models"
-    / "model.joblib"
+_predictor = ChurnPredictorService(
+    model_path=MODEL_PATH,
+    threshold=PREDICTION_THRESHOLD,
+    probability_decimals=PROBABILITY_DECIMALS,
 )
+_predictor.load()
 
 
-try:
-    model = joblib.load(MODEL_PATH)
-except Exception as exc:
-    model = None
-    model_error = str(exc)
-
-
-@router.post(
-    "/predict",
-    response_model=PredictionResponse,
-)
-def predict(customer: CustomerRequest):
-
-    if model is None:
+@router.post("/predict", response_model=PredictionResponse)
+def predict(customer: CustomerRequest) -> PredictionResponse:
+    if not _predictor.is_loaded:
         raise HTTPException(
             status_code=500,
-            detail=f"Modelo não carregado: {model_error}",
+            detail=f"Modelo não carregado: {_predictor.load_error}",
         )
 
     try:
+        prediction, probability = _predictor.predict(customer.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        data = pd.DataFrame(
-            [customer.model_dump()]
-        )
-
-        probability = float(
-            model.predict_proba(data)[0][1]
-        )
-
-        prediction = (
-            "Yes"
-            if probability >= 0.5
-            else "No"
-        )
-
-        return PredictionResponse(
-            prediction=prediction,
-            probability=round(
-                probability,
-                4,
-            ),
-        )
-
-    except Exception as exc:
-
-        raise HTTPException(
-            status_code=400,
-            detail=f"Erro durante a predição: {str(exc)}",
-        )
+    return PredictionResponse(prediction=prediction, probability=probability)
