@@ -271,3 +271,37 @@ Antes de uso real, recomenda-se validação com dados da operadora, análise de 
 
 - [Model Card](docs/MODEL_CARD.md)
 - [Roteiro e plano de gravação do vídeo STAR](docs/VIDEO_STAR.md)
+
+
+caso nescessario 
+
+1. Abra seu kaggle.json
+
+Ele normalmente tem este formato:
+
+{
+  "username": "SEU_USUARIO_KAGGLE",
+  "key": "SUA_CHAVE_KAGGLE"
+}
+2. No GitHub
+
+Entre no seu repositório e vá em:
+
+Settings → Secrets and variables → Actions → New repository secret
+
+Preencha:
+
+Name:
+
+KAGGLE_JSON
+
+Secret:
+
+Cole todo o conteúdo, incluindo { }:
+
+{
+  "username": "SEU_USUARIO_KAGGLE",
+  "key": "SUA_CHAVE_KAGGLE"
+}
+
+Depois clique em Add secret.
