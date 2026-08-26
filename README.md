@@ -243,7 +243,7 @@ Resposta observada com o artefato versionado:
 }
 ```
 
-## Testes e CI
+## Testes
 
 Os testes independentes do dataset podem ser executados logo após a instalação:
 
@@ -257,7 +257,50 @@ Após baixar o dataset, execute a suíte completa:
 uv run pytest -q
 ```
 
-Os workflows do GitHub Actions validam API, dados, métricas do modelo, cobertura e exposição de segredos. Os jobs que usam o dataset dependem do secret `KAGGLE_JSON`.
+Os jobs que usam o dataset dependem do secret `KAGGLE_JSON`.
+
+## Quality Gates da Esteira CI/CD
+
+Um Pull Request ou Push será considerado aprovado apenas se todos os
+workflows obrigatórios forem concluídos com sucesso.
+
+### Testes
+- Todos os testes automatizados devem passar.
+- Testes de API, pré-processamento e treinamento devem executar sem erros.
+
+### Cobertura
+- A cobertura mínima exigida pelo projeto é de 70%.
+- Valores abaixo de 70% fazem o workflow falhar.
+
+### Métricas do Modelo
+
+O modelo deve atender aos seguintes valores mínimos:
+
+| Métrica | Classe 0 | Classe 1 |
+|---|---:|---:|
+| Precision | 0.70 | 0.55 |
+| Recall | 0.70 | 0.45 |
+| F1-Score | 0.70 | 0.45 |
+
+Além disso:
+
+- Accuracy >= 0.65
+- Macro Precision >= 0.65
+- Macro Recall >= 0.60
+- Macro F1 >= 0.60
+- Weighted Precision >= 0.60
+- Weighted Recall >= 0.60
+- Weighted F1 >= 0.60
+
+### Segurança
+- O workflow verifica a exposição de segredos no código.
+- Credenciais e tokens não devem ser versionados.
+- Os dados dependentes do Kaggle são acessados por meio do secret `KAGGLE_JSON`.
+
+Se qualquer Quality Gate obrigatório falhar, o workflow será marcado como
+falho e a alteração não atenderá aos critérios de qualidade definidos
+para o projeto.
+
 
 ## Limitações e uso responsável
 
