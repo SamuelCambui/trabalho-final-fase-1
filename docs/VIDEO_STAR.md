@@ -1,70 +1,73 @@
-# Vídeo STAR - roteiro de até 5 minutos
+# Vídeo STAR — roteiro de até 5 minutos
 
-Este roteiro cobre os quatro pontos exigidos pelo método STAR e reserva tempo para demonstrar a API. Use linguagem natural; não é necessário ler cada frase literalmente.
+Este roteiro apresenta o trabalho pelo método STAR e demonstra a interface da API. Fale de forma natural; use o texto como guia, não como leitura obrigatória.
 
 ## Preparação antes de gravar
 
-1. Treine o modelo com `python -m src.train_model.train`.
-2. Inicie a API com `python -m uvicorn src.api.main:app --reload`.
-3. Deixe abertas quatro abas: README, notebook, Model Card e Swagger em <http://127.0.0.1:8000/docs>.
-4. No Swagger, teste previamente `/health`, `/auth/login` e `/predict`.
-5. Feche notificações, aumente o zoom do navegador e confirme que nenhum token ou segredo real aparece na tela.
-6. Grave em 1080p e mantenha a duração total entre 4min30s e 5min.
+1. Na raiz do projeto, execute `uv sync --dev`.
+2. Copie o ambiente com `cp .env.example .env`.
+3. Inicie a API com `uv run uvicorn src.api.main:app --reload`.
+4. Abra e teste previamente:
+   - README no GitHub;
+   - tabela final do notebook de modelagem;
+   - interface em <http://127.0.0.1:8000/>;
+   - Model Card.
+5. Na interface, confirme login com `admin/admin` e faça uma predição completa.
+6. Feche notificações e qualquer tela com `kaggle.json`, `.env`, token ou dado pessoal.
+7. Grave em 1080p, com zoom legível, e mantenha a duração entre 4min30s e 4min55s.
+
+O modelo campeão já está versionado em `notebooks/models/champion_model.joblib`; não é necessário treinar novamente antes da gravação.
 
 ## Cronograma visual
 
 | Tempo | STAR | Tela sugerida |
 |---|---|---|
-| 0:00-0:40 | Situation | Título do README e achados da EDA |
-| 0:40-1:10 | Task | Entregas e arquitetura do projeto |
-| 1:10-3:20 | Action | Notebook, comparação de modelos e estrutura `src/` |
-| 3:20-4:35 | Result | Swagger: health, login e predict |
-| 4:35-4:55 | Result / fechamento | Model Card e próximos passos |
+| 0:00–0:35 | Situation | README: problema e achados da EDA |
+| 0:35–1:00 | Task | README: entregas e estrutura |
+| 1:00–2:55 | Action | Notebook: protocolo e tabela dos três modelos |
+| 2:55–4:20 | Result | Interface: login, health/modelo e predição |
+| 4:20–4:50 | Result / fechamento | Model Card: decisão, fairness e limitações |
 
 ## Roteiro falado
 
-### 0:00-0:40 - Situation
+### 0:00–0:35 — Situation
 
-> Olá! Este é o Tech Challenge da Fase 1 da FIAP Pós-Tech. O problema de negócio é o churn em uma operadora de telecomunicações. A empresa precisa reconhecer antecipadamente clientes com maior risco de cancelamento para priorizar ações de retenção. Usamos o dataset público Telco Customer Churn, com 7.043 clientes e 21 colunas. Na análise exploratória, 26,54% dos clientes apresentaram churn. Também observamos maior churn entre contratos mensais, clientes de fibra óptica e clientes com menor tempo de permanência. Essas relações são descritivas e não significam causalidade.
+> Olá! Este é o Tech Challenge da Fase 1 da FIAP Pós-Tech. Trabalhamos com churn em uma operadora de telecomunicações: o objetivo é reconhecer clientes com maior risco de cancelamento para apoiar ações de retenção. O dataset público tem 7.043 clientes e 21 colunas. Na EDA, 26,54% dos clientes apresentaram churn. Também observamos maior churn em contratos mensais, clientes de fibra óptica e clientes com menor permanência. São associações descritivas, não relações causais.
 
-### 0:40-1:10 - Task
+### 0:35–1:00 — Task
 
-> Nossa tarefa foi construir um pipeline completo e reprodutível: explorar e limpar os dados, definir métricas, criar uma Regressão Logística como baseline, treinar Random Forest e uma rede MLP, comparar os resultados, salvar um modelo final e disponibilizar a inferência em uma API FastAPI. Também organizamos o código em módulos, fixamos as sementes, adicionamos testes e documentamos limitações e possíveis vieses.
+> A tarefa foi entregar o ciclo completo: explorar e preparar os dados, definir métricas de negócio, criar uma Regressão Logística como baseline, treinar Random Forest e MLP, comparar os três modelos no mesmo protocolo e publicar a inferência em uma API FastAPI. Também incluímos testes, integração contínua, auditoria de fairness e documentação do modelo.
 
-### 1:10-3:20 - Action
+### 1:00–2:55 — Action
 
-> Primeiro, convertemos TotalCharges para formato numérico, removemos o identificador customerID e tratamos os registros inválidos. Dividimos os dados de forma estratificada, com 70% para treino e 30% para teste e semente 42.
+> Primeiro, convertemos TotalCharges para número e imputamos 11 valores ausentes com a mediana calculada apenas no treino. Removemos o identificador do cliente e fizemos uma divisão estratificada de 80% para treino e 20% para teste, com semente 42.
 >
-> O pré-processamento foi colocado dentro de um Pipeline do Scikit-Learn. Variáveis numéricas recebem imputação pela mediana e padronização. Variáveis categóricas recebem imputação pela moda e one-hot encoding. Isso ajuda a evitar vazamento de dados entre treino e validação.
+> A engenharia e a seleção resultaram em 18 features. A validação cruzada usa cinco folds estratificados, e todos os modelos foram comparados nos mesmos dados. Como o custo assumido de não identificar um cliente que cancelará é alto, definimos recall de churn como métrica de negócio. Também acompanhamos precision, F1, ROC-AUC, PR-AUC e MCC.
 >
-> A métrica principal de seleção foi ROC-AUC, avaliada com validação cruzada de cinco folds. A MLP obteve ROC-AUC médio de 0,8481, e a Random Forest, 0,8477. Como a regra implementada escolhe o maior ROC-AUC médio, a MLP foi salva como modelo usado pela API.
+> No teste, a Regressão Logística atingiu recall de 0,8797; a Random Forest, 0,7888; e a MLP, 0,5535. Por isso, a Regressão Logística foi declarada campeã formal e é o modelo servido pela API. Mas a decisão tem trade-off: sua precision é 0,4323, enquanto a Random Forest tem o melhor F1, ROC-AUC, PR-AUC e MCC. Sem custos monetários e capacidade real da campanha, não afirmamos que existe um único modelo economicamente ótimo.
 >
-> Porém, a diferença é muito pequena. No teste, a Random Forest teve recall de 0,779 para churn, contra 0,522 da MLP. A MLP teve maior accuracy e precision. Portanto, documentamos no Model Card que a escolha operacional depende do custo de negócio: se perder um cliente de alto risco for mais caro, a Random Forest ou um threshold ajustado podem ser melhores.
+> A auditoria de fairness por gênero encontrou diferenças inferiores a 2 pontos percentuais nas métricas avaliadas. Esse resultado vale apenas para esse atributo e essa amostra.
 >
-> Depois, refatoramos o treinamento e a inferência para a pasta src. A API possui schemas de entrada e saída, serviços separados e rotas de health, autenticação e predição. O acesso à predição usa token JWT para demonstração.
+> Por fim, organizamos a aplicação em routers, schemas e services, reproduzimos as 18 features na inferência, adicionamos autenticação JWT por cookie, testes automatizados e workflows no GitHub Actions.
 
-### 3:20-4:35 - Result e demonstração
+### 2:55–4:20 — Result e demonstração
 
-Enquanto fala, execute os passos abaixo no Swagger.
+Enquanto fala, use a interface em <http://127.0.0.1:8000/>.
 
-1. Abra `GET /health`, clique em **Try it out** e **Execute**.
+1. Mostre que o status indica API online e modelo carregado.
+2. Faça login com `admin/admin`.
+3. Preencha ou mantenha o exemplo de cliente e clique para prever.
+4. Mostre a classe e a probabilidade retornadas.
 
-> Com o modelo treinado, o health check retorna status ok e confirma que o artefato foi carregado.
+> A API carregou a Pipeline de Regressão Logística e confirmou o health check. Após o login, a aplicação envia os dados brutos do cliente, aplica a mesma engenharia das 18 features e retorna a classe prevista junto com a probabilidade estimada. Neste exemplo de reserva, o retorno esperado com o artefato atual é churn `Yes`, com probabilidade próxima de 0,6411.
 
-2. Abra `POST /auth/login`, use `admin` e `admin`, execute e copie somente o valor de `access_token`.
+Se preferir o Swagger, execute `POST /auth/login` com `admin/admin`. O navegador grava o cookie HttpOnly automaticamente; depois execute `POST /predict`. Não use o botão **Authorize**, pois a implementação atual autentica por cookie, e não pelo header Bearer.
 
-> O login retorna um token temporário. Ele protege o endpoint de predição na demonstração.
+### 4:20–4:50 — Fechamento
 
-3. Clique em **Authorize**, cole o token, feche a janela e abra `POST /predict`.
-4. Use o exemplo já preenchido pelo Swagger e clique em **Execute**.
+> Como resultado, entregamos EDA, comparação controlada dos três modelos, auditoria de fairness, modelo persistido e API funcional. O Model Card registra as limitações: base pública, threshold fixo em 0,5, probabilidades ainda não calibradas e fairness avaliada somente por gênero. Antes de produção, definiríamos custos de negócio, ajustaríamos o threshold, validaríamos em dados recentes e ampliaríamos o monitoramento e a análise por subgrupos. Obrigado!
 
-> O endpoint recebe os dados de um cliente e retorna a classe prevista, Yes ou No, junto com a probabilidade estimada de churn. Assim, o modelo treinado pode ser consumido por outros sistemas por meio de uma interface REST documentada.
-
-### 4:35-4:55 - Fechamento
-
-> Como resultado, entregamos a análise exploratória, os pipelines de modelagem, a comparação dos modelos e uma API funcional. Também registramos limitações: a base é pública, o threshold ainda não foi otimizado por custo, as probabilidades não foram calibradas e atributos demográficos exigem avaliação de equidade. Antes de produção, validaríamos o modelo com dados recentes da operadora, métricas por subgrupo e monitoramento de drift. Obrigado!
-
-## Payload de reserva para a demonstração
+## Payload de reserva
 
 ```json
 {
@@ -90,18 +93,32 @@ Enquanto fala, execute os passos abaixo no Swagger.
 }
 ```
 
+Retorno verificado com o artefato atual:
+
+```json
+{
+  "prediction": "Yes",
+  "probability": 0.6411
+}
+```
+
 ## Plano de contingência
 
-- Se o modelo não carregar, mostre o `/health` degradado, explique que o artefato não é versionado e interrompa a gravação para treinar antes de tentar novamente.
-- Se o token expirar, gere outro em `/auth/login`.
-- Se a demonstração ao vivo atrasar, mostre apenas `/health` e `/predict`; a explicação da arquitetura já cobre a autenticação.
-- Se a gravação ultrapassar 5 minutos, corte detalhes dos hiperparâmetros, não as quatro partes do STAR.
+- Se a interface não abrir, mostre `/health` e faça a demonstração pelo Swagger.
+- Se o login falhar, confirme que as credenciais são exatamente `admin/admin`.
+- Se o modelo não carregar, reinicie a API a partir da raiz do repositório e confirme a existência de `notebooks/models/champion_model.joblib`.
+- Se a predição retornar 401, refaça o login na mesma aba; o JWT fica em cookie HttpOnly.
+- Se a gravação ultrapassar 5 minutos, corte detalhes de hiperparâmetros, preservando Situation, Task, Action e Result.
+- Tenha uma gravação de reserva da demonstração funcionando para inserir na edição se a execução ao vivo falhar.
 
 ## Checklist final
 
 - [ ] duração máxima de 5 minutos;
 - [ ] Situation, Task, Action e Result claramente identificáveis;
+- [ ] os três modelos e o critério de escolha foram explicados;
+- [ ] trade-off entre Regressão Logística e Random Forest foi mencionado;
 - [ ] API demonstrada com modelo carregado;
-- [ ] nenhum segredo ou token real visível;
+- [ ] nenhum segredo, token ou dado pessoal aparece;
 - [ ] áudio compreensível e tela legível;
-- [ ] link do vídeo adicionado à entrega da FIAP e, se desejado, ao README.
+- [ ] vídeo assistido do início ao fim após a edição;
+- [ ] link final adicionado à entrega e, se desejado, ao README.
