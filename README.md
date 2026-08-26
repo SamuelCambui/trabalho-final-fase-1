@@ -1,33 +1,31 @@
 # Predição de Churn de Clientes Telco
 
-Projeto do Tech Challenge - Fase 1 da FIAP Pós-Tech. A solução percorre o ciclo de vida de um produto de Machine Learning: análise exploratória, treinamento e comparação de modelos, empacotamento do pipeline e disponibilização de inferência por uma API REST com FastAPI.
+Projeto do Tech Challenge — Fase 1 da FIAP Pós-Tech. A solução percorre análise exploratória, definição de métricas, treinamento e comparação de modelos, auditoria de fairness e disponibilização de inferência por uma API FastAPI.
 
 ## Problema de negócio
 
-Uma operadora de telecomunicações precisa identificar clientes com maior propensão ao cancelamento. O objetivo do modelo é apoiar ações preventivas de retenção, priorizando clientes de maior risco para contato ou ofertas direcionadas.
+Uma operadora de telecomunicações quer identificar antecipadamente clientes com maior propensão ao cancelamento para priorizar ações de retenção. O modelo serve como apoio à decisão e não deve tomar decisões automáticas sobre clientes.
 
-A saída deve ser usada como apoio à decisão, e não como decisão automática sobre clientes. O custo de deixar de identificar um cliente que realmente cancelará pode ser maior que o custo de abordar um cliente sem intenção de cancelar; por isso, recall da classe de churn também deve ser considerado junto com ROC-AUC.
+Como deixar de identificar um cliente que cancelará pode custar mais do que uma abordagem de retenção desnecessária, o **recall da classe churn** foi definido como critério principal de negócio. ROC-AUC, PR-AUC, F1 e MCC também foram acompanhados para evitar uma escolha baseada em uma única métrica.
 
-## Entregas do projeto
+## Entregas
 
-- EDA e baseline de Regressão Logística no notebook;
-- pipelines reprodutíveis de pré-processamento com Scikit-Learn;
-- treinamento e comparação de Random Forest e MLPClassifier;
-- seleção e persistência do modelo usado pela API;
-- API FastAPI com health check, autenticação JWT e predição;
-- testes automatizados com Pytest;
-- [Model Card](docs/MODEL_CARD.md) com desempenho, limitações e riscos;
-- [roteiro do vídeo STAR](docs/VIDEO_STAR.md) com duração máxima de 5 minutos.
+- [Etapa 1 — EDA, métricas e baseline de Regressão Logística](notebooks/eda_churn_prediction.ipynb);
+- [Etapa 1.1 — auditoria de fairness por gênero](notebooks/fairness_churn_prediction.ipynb);
+- [Etapa 2 — Random Forest, MLP e comparação controlada](notebooks/modelagem_avaliacao_churn_prediction.ipynb);
+- Etapa 3 — código modular em `src/`, testes Pytest, CI e API FastAPI;
+- Etapa 4 — este README, [Model Card](docs/MODEL_CARD.md) e [roteiro do vídeo STAR](docs/VIDEO_STAR.md);
+- documentação complementar do [ML Canvas](docs/MLCanvas.docx).
 
 ## Dataset e principais achados
 
-Foi utilizado o dataset público **Telco Customer Churn**, com 7.043 clientes e 21 colunas na versão bruta. A variável alvo é `Churn`, em que `Yes` representa cancelamento.
+Foi utilizado o dataset público **Telco Customer Churn**, com 7.043 clientes e 21 colunas na versão bruta. A variável-alvo é `Churn`, em que `Yes` representa cancelamento.
 
-Principais achados da EDA registrada em `notebook.ipynb`:
+Os principais achados descritivos da EDA foram:
 
-- 26,54% dos clientes apresentam churn, indicando desbalanceamento moderado;
-- clientes com churn têm, em média, 17,98 meses de permanência, contra 37,57 meses entre os que permanecem;
-- contratos mensais apresentam 42,71% de churn, contra 11,27% nos contratos anuais e 2,83% nos contratos de dois anos;
+- 26,54% dos clientes apresentam churn, caracterizando desbalanceamento da classe positiva;
+- clientes com churn têm, em média, 17,98 meses de permanência, contra 37,57 meses entre os demais;
+- contratos mensais apresentam 42,71% de churn, contra 11,27% nos anuais e 2,83% nos contratos de dois anos;
 - clientes com fibra óptica apresentam 41,89% de churn no recorte observado;
 - a cobrança mensal média é maior entre clientes com churn: 74,44 contra 61,27.
 
@@ -35,184 +33,182 @@ Essas relações são descritivas e não demonstram causalidade.
 
 ## Metodologia
 
-O fluxo de treinamento:
+O protocolo usado na comparação final:
 
-1. converte `TotalCharges` para número, remove `customerID` e descarta registros inválidos;
-2. divide os dados em 70% para treino e 30% para teste, com estratificação e `random_state=42`;
-3. imputa variáveis numéricas pela mediana e aplica `StandardScaler`;
-4. imputa variáveis categóricas pela moda e aplica `OneHotEncoder`;
-5. treina Random Forest e MLP, com busca de hiperparâmetros opcional;
-6. compara os modelos com validação cruzada de 5 folds usando ROC-AUC;
-7. salva o modelo de maior ROC-AUC médio em `models/model.joblib`.
-
-Todo o pré-processamento fica dentro do `Pipeline` do Scikit-Learn, reduzindo risco de vazamento entre treino e validação.
+1. converte `TotalCharges` para número e imputa seus 11 valores ausentes com a mediana calculada somente no treino;
+2. remove `customerID` e transforma `Churn` em alvo binário;
+3. faz divisão estratificada de 80% para treino e 20% para teste, com `random_state=42`;
+4. cria e seleciona 18 features, incluindo atributos de permanência, cobrança, contrato, internet e interações;
+5. aplica `StandardScaler` dentro dos pipelines que precisam de normalização;
+6. avalia Regressão Logística, Random Forest e MLP nos mesmos dados e em validação cruzada estratificada de cinco folds;
+7. compara recall, precision, F1, ROC-AUC, PR-AUC, MCC e estabilidade entre folds;
+8. registra experimentos com MLflow e persiste os artefatos finais em `notebooks/models/`.
 
 ## Resultados
 
-### Validação cruzada do pipeline final
+### Validação cruzada
 
-| Modelo | ROC-AUC médio | Desvio padrão |
-|---|---:|---:|
-| MLP | 0,8481 | 0,0150 |
-| Random Forest | 0,8477 | 0,0147 |
+| Modelo | Recall médio | Desvio do recall | ROC-AUC médio |
+|---|---:|---:|---:|
+| Regressão Logística | **0,8870** | **0,0119** | 0,8246 |
+| Random Forest | 0,7987 | 0,0153 | **0,8423** |
+| MLP | 0,5552 | 0,0239 | 0,8235 |
 
 ### Conjunto de teste
 
-| Modelo | Accuracy | Precision | Recall | F1 | ROC-AUC |
-|---|---:|---:|---:|---:|---:|
-| Random Forest | 0,7502 | 0,5202 | **0,7790** | **0,6238** | **0,8326** |
-| MLP | **0,7948** | **0,6397** | 0,5223 | 0,5751 | 0,8324 |
+| Modelo | Accuracy | Precision | Recall | F1 | ROC-AUC | PR-AUC | MCC |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Regressão Logística | 0,6615 | 0,4323 | **0,8797** | 0,5797 | 0,8260 | 0,6242 | 0,4096 |
+| Random Forest | 0,7502 | 0,5194 | 0,7888 | **0,6263** | **0,8432** | **0,6493** | **0,4726** |
+| MLP | **0,7913** | **0,6198** | 0,5535 | 0,5847 | 0,8373 | 0,6444 | 0,4473 |
 
-O pipeline atual escolhe a **MLP** porque ela obteve o maior ROC-AUC médio na validação cruzada, que é a regra implementada. Entretanto, a diferença de 0,0004 para Random Forest é muito menor que o desvio observado nos folds e não comprova superioridade prática. Para uma campanha cujo objetivo principal seja encontrar o maior número possível de clientes propensos ao churn, a Random Forest é uma candidata operacional forte por seu recall de 0,7790. A decisão final deve considerar o custo de falsos positivos e falsos negativos e pode exigir ajuste do threshold.
+### Modelo escolhido
 
-O notebook também registra o baseline de Regressão Logística com ROC-AUC médio de 0,8456. Como esse resultado foi produzido em uma execução anterior do notebook e não consta no relatório final gerado por `src/train_model`, ele deve ser tratado como referência histórica, não como uma comparação controlada definitiva. Consulte o [Model Card](docs/MODEL_CARD.md) para detalhes.
+A **Regressão Logística** é o modelo campeão formal porque obteve o maior recall, critério definido a partir do problema de negócio. No teste, seu recall foi 0,8797, com IC 95% bootstrap de `[0,845; 0,912]`, contra 0,7888 da Random Forest, com IC de `[0,747; 0,828]`.
+
+Essa decisão tem um custo claro: a precision da Regressão Logística é 0,4323, portanto ela gera mais falsos positivos. A **Random Forest é a alternativa operacional mais equilibrada**, pois vence em F1, ROC-AUC, PR-AUC e MCC. Antes de produção, a escolha deve ser refeita com custos reais de falso positivo e falso negativo, capacidade da campanha e ajuste de threshold.
+
+A API usa o artefato `notebooks/models/champion_model.joblib`, uma `Pipeline` com `StandardScaler` e Regressão Logística. O threshold atual é 0,5.
+
+## Fairness
+
+O notebook de fairness auditou o modelo campeão por `gender`. As diferenças máximas observadas entre os grupos `Female` e `Male` foram:
+
+| Métrica | Diferença máxima |
+|---|---:|
+| Accuracy | 0,0016 |
+| Selection rate | 0,0169 |
+| False positive rate | 0,0070 |
+| False negative rate | 0,0083 |
+
+Não foi observada diferença superior a 2 pontos percentuais nesse recorte. Isso não prova equidade geral: a auditoria cobre somente gênero, nesta amostra e neste threshold.
 
 ## Estrutura do projeto
 
 ```text
 .
+├── .github/workflows/              # testes, qualidade de dados/modelo e secrets scan
 ├── data/
 │   ├── download_dataset.py
-│   └── raw/                         # criado pelo setup; dados não versionados
+│   └── raw/                        # criado pelo setup; dados não versionados
 ├── docs/
 │   ├── MODEL_CARD.md
-│   └── VIDEO_STAR.md
-├── models/
-│   └── comparison_results.csv
-├── scripts/
-│   └── setup.py
+│   ├── VIDEO_STAR.md
+│   └── MLCanvas.docx
+├── models/                         # saídas do treinamento modular
+├── notebooks/
+│   ├── eda_churn_prediction.ipynb
+│   ├── fairness_churn_prediction.ipynb
+│   ├── modelagem_avaliacao_churn_prediction.ipynb
+│   └── models/                     # campeão e alternativa usados na entrega
+├── scripts/setup.py
 ├── src/
-│   ├── api/
-│   │   ├── routers/
-│   │   ├── schemas/
-│   │   └── services/
-│   └── train_model/
+│   ├── api/                        # routers, schemas, services e interface web
+│   └── train_model/                # pipeline modular de treinamento
 ├── tests/
-├── notebook.ipynb
 ├── pyproject.toml
-└── requirements.txt
+└── uv.lock
 ```
 
-Os arquivos CSV brutos e os artefatos `.joblib` são ignorados pelo Git. Cada ambiente deve baixar os dados e treinar o modelo antes de iniciar a API.
+O notebook antigo `notebook.ipynb` e o treinamento modular em `src/train_model/` permanecem como histórico de desenvolvimento. A fonte da comparação final e do artefato servido é a sequência de notebooks em `notebooks/`.
 
-## Pré-requisitos
+## Contribuições da equipe
 
-- Python 3.13 recomendado (`.python-version` e `pyproject.toml`);
-- Git;
-- conta no Kaggle e um token de API para o setup automático.
+A divisão abaixo foi conferida no histórico de commits e registra as principais frentes, sem excluir revisões cruzadas:
+
+| Integrante | Principais contribuições |
+|---|---|
+| Samuel Cambui | EDA e baseline; auditoria de fairness; comparação final entre os três modelos; persistência dos modelos |
+| Lucas Balduino | pipeline modular inicial; refatoração da API para o novo artefato; schemas e engenharia das 18 features |
+| Leonardo Oliveira | configuração do ambiente com `pyproject.toml`/uv; setup; GitHub Actions; testes e interface web da API |
+| Lincoln | ML Canvas; revisão e documentação dos notebooks; apoio à integração das entregas |
+| Claudia Park | README final; Model Card; roteiro STAR; testes e revisão de consistência da Etapa 4 |
 
 ## Instalação
+
+Pré-requisitos: Git, Python 3.13 e [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/SamuelCambui/trabalho-final-fase-1.git
 cd trabalho-final-fase-1
+python -m pip install uv
+uv sync --dev
+```
 
-Crie um ambiente virtual Python:
-
-py -3.13 -m venv .venv 
-
-Ative o ambiente virtual.
-
-No Linux/macOS:
-
-source .venv/bin/activate
-
-No Windows PowerShell:
-
-.venv\Scripts\Activate.ps1
-
-No Windows CMD:
-
-.venv\Scripts\activate.bat
-
-Após ativar o ambiente, atualize o pip:
-
-python -m pip install --upgrade pip
-
-Agora vamos baixar todas as dependencias
-
-python -m pip install pyproject.toml
+O `pyproject.toml` e o `uv.lock` são as fontes de dependências do projeto.
 
 ### Download do dataset
 
-1. Acesse as [configurações de API do Kaggle](https://www.kaggle.com/settings/api).
-2. Crie uma chave legada em **Create Legacy API Key**.
-3. Salve o arquivo baixado como `kaggle.json` na raiz do projeto.
-4. Execute:
+1. Nas [configurações de API do Kaggle](https://www.kaggle.com/settings/api), crie uma chave legada.
+2. Salve o arquivo como `kaggle.json` na raiz do projeto.
+3. Execute:
 
 ```bash
-python scripts/setup.py
+uv run python scripts/setup.py
 ```
 
-O script configura a credencial local, baixa `blastchar/telco-customer-churn` e valida os dados em `data/raw/`. O arquivo `kaggle.json` é ignorado pelo Git e nunca deve ser versionado.
+O script baixa `blastchar/telco-customer-churn` e valida o CSV em `data/raw/`. O `kaggle.json` é ignorado pelo Git e nunca deve ser versionado.
 
-## Treinamento
+Para a CI, o conteúdo completo do arquivo deve ser cadastrado no secret de repositório `KAGGLE_JSON`.
 
-Treinamento com GridSearchCV, usado para produzir a comparação registrada:
+## Reprodução dos notebooks
+
+Depois do setup, abra os notebooks a partir da pasta `notebooks/` e execute-os nesta ordem:
 
 ```bash
-python -m src.train_model.train
+cd notebooks
+uv run jupyter notebook
 ```
 
-Para uma execução mais rápida, sem busca de hiperparâmetros:
+1. `eda_churn_prediction.ipynb`;
+2. `modelagem_avaliacao_churn_prediction.ipynb`;
+3. `fairness_churn_prediction.ipynb`.
 
-```bash
-python -m src.train_model.train --sem-otimizacao
-```
+O primeiro notebook gera os dados processados usados pelos demais. O notebook de modelagem registra execuções no MLflow e sobrescreve os artefatos em `notebooks/models/`.
 
-Também é possível informar o caminho do CSV:
+## Execução da API
 
-```bash
-python -m src.train_model.train --dataset data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
-```
-
-O treinamento gera:
-
-- `models/rf_model.joblib`: Random Forest;
-- `models/mlp_model.joblib`: MLP;
-- `models/model.joblib`: modelo selecionado e carregado pela API;
-- `models/comparison_results.csv`: resumo da validação cruzada.
-
-## Configuração e execução da API
-
-Copie o arquivo de ambiente e troque a chave em qualquer ambiente compartilhado:
+O modelo campeão necessário para a demonstração está versionado no repositório.
 
 ```bash
 cp .env.example .env
-python -m uvicorn src.api.main:app --reload
+uv run uvicorn src.api.main:app --reload
 ```
 
-A documentação interativa fica disponível em <http://127.0.0.1:8000/docs>.
+Acesse:
 
-Se `models/model.joblib` não existir, a API inicia em modo degradado: `/health` informa `model_loaded: false` e `/predict` não fica disponível para inferência.
+- interface web: <http://127.0.0.1:8000/>;
+- Swagger: <http://127.0.0.1:8000/docs>;
+- health check: <http://127.0.0.1:8000/health>.
+
+Credenciais locais de demonstração: `admin/admin` ou `user/user`.
 
 ### Endpoints
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
-| GET | `/health` | não | Informa o estado da API e do modelo |
-| GET | `/model/info` | não | Informa tipo do classificador e threshold |
-| POST | `/auth/login` | não | Retorna um token JWT |
-| GET | `/auth/me` | Bearer token | Retorna os dados do usuário autenticado |
-| POST | `/predict` | Bearer token | Retorna classe e probabilidade de churn |
+| GET | `/` | não | Interface web da demonstração |
+| GET | `/health` | não | Estado da API e do modelo |
+| GET | `/model/info` | não | Tipo do classificador e threshold |
+| POST | `/auth/login` | não | Autentica e grava o JWT em cookie HttpOnly |
+| GET | `/auth/me` | cookie | Dados do usuário autenticado |
+| POST | `/auth/logout` | não | Remove o cookie de autenticação |
+| POST | `/predict` | cookie | Classe e probabilidade de churn |
 
-As credenciais `admin/admin` e `user/user` existem apenas para demonstração local.
+### Exemplo com `curl`
 
-### Exemplo de uso
-
-Obtenha o token:
+O login grava o cookie em um arquivo local:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/auth/login \
+curl -c cookies.txt -X POST http://127.0.0.1:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin"}'
 ```
 
-Use o valor de `access_token` retornado na predição:
+Use o cookie na predição:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/predict \
-  -H "Authorization: Bearer SEU_TOKEN_AQUI" \
+curl -b cookies.txt -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
     "gender": "Female",
@@ -237,71 +233,45 @@ curl -X POST http://127.0.0.1:8000/predict \
   }'
 ```
 
-Exemplo de resposta:
+Resposta observada com o artefato versionado:
 
 ```json
 {
   "prediction": "Yes",
-  "probability": 0.6871
+  "probability": 0.6411
 }
 ```
 
-## Testes
+## Testes e CI
 
-Execute a suíte com:
+Os testes independentes do dataset podem ser executados logo após a instalação:
 
 ```bash
-python -m pytest -q
+uv run pytest -q tests/test_api.py tests/test_preprocessing.py tests/tests/test_train.py
 ```
 
-Os testes cobrem a limpeza dos dados, o health check da API e a autenticação de demonstração.
+Após baixar o dataset, execute a suíte completa:
+
+```bash
+uv run pytest -q
+```
+
+Os workflows do GitHub Actions validam API, dados, métricas do modelo, cobertura e exposição de segredos. Os jobs que usam o dataset dependem do secret `KAGGLE_JSON`.
 
 ## Limitações e uso responsável
 
-- os dados representam uma única base pública e podem não refletir clientes atuais ou outras operadoras;
-- o dataset não permite avaliar deriva temporal ou generalização geográfica;
-- há desbalanceamento da classe positiva;
-- o threshold fixo de 0,5 ainda não foi otimizado pelo custo de negócio;
-- atributos demográficos e familiares podem introduzir tratamento desigual entre grupos;
-- as credenciais de demonstração e a chave JWT padrão não são adequadas para produção.
+- a base pública de uma única empresa pode não representar outras operadoras ou períodos;
+- não há dimensão temporal adequada para validação fora do tempo ou medição histórica de drift;
+- o threshold 0,5 não foi escolhido por uma função de custo nem pela capacidade real de uma campanha;
+- as probabilidades ainda não foram calibradas;
+- a fairness foi auditada somente por gênero, não por todas as combinações de subgrupos;
+- o modelo não fornece explicações locais por predição;
+- usuários fixos, senhas de demonstração e a chave JWT padrão não são adequados para produção.
 
-Antes de uso real, recomenda-se validação com dados da operadora, análise de custo, calibração, avaliação por subgrupos, monitoramento de drift e revisão humana das ações de retenção.
+Antes de qualquer uso real, são necessários dados recentes da operadora, definição de custos, escolha e validação do threshold, calibração, análise ampliada por subgrupos, monitoramento de drift e revisão humana das ações de retenção.
 
 ## Documentação da entrega
 
 - [Model Card](docs/MODEL_CARD.md)
 - [Roteiro e plano de gravação do vídeo STAR](docs/VIDEO_STAR.md)
-
-
-caso nescessario 
-
-1. Abra seu kaggle.json
-
-Ele normalmente tem este formato:
-
-{
-  "username": "SEU_USUARIO_KAGGLE",
-  "key": "SUA_CHAVE_KAGGLE"
-}
-2. No GitHub
-
-Entre no seu repositório e vá em:
-
-Settings → Secrets and variables → Actions → New repository secret
-
-Preencha:
-
-Name:
-
-KAGGLE_JSON
-
-Secret:
-
-Cole todo o conteúdo, incluindo { }:
-
-{
-  "username": "SEU_USUARIO_KAGGLE",
-  "key": "SUA_CHAVE_KAGGLE"
-}
-
-Depois clique em Add secret.
+- [ML Canvas](docs/MLCanvas.docx)

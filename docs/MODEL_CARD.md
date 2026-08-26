@@ -1,21 +1,23 @@
-# Model Card - Predição de Churn Telco
+# Model Card — Predição de Churn Telco
 
 ## 1. Informações gerais
 
 | Campo | Valor |
 |---|---|
-| Projeto | Tech Challenge - Fase 1 FIAP Pós-Tech |
-| Versão do documento | 1.0 |
-| Data | 20/08/2026 |
+| Projeto | Tech Challenge — Fase 1 FIAP Pós-Tech |
+| Versão do documento | 2.0 |
+| Data | 26/08/2026 |
 | Responsáveis | Equipe do Tech Challenge |
 | Domínio | Telecomunicações / retenção de clientes |
-| Tipo de tarefa | Classificação binária supervisionada |
+| Tarefa | Classificação binária supervisionada |
 | Saída | Probabilidade de churn e classe `Yes` ou `No` |
-| Artefato servido | `models/model.joblib` |
+| Modelo campeão | Regressão Logística com `class_weight='balanced'` |
+| Artefato servido | `notebooks/models/champion_model.joblib` |
+| Threshold atual | 0,5 |
 
 ## 2. Objetivo e uso pretendido
 
-O modelo estima a probabilidade de cancelamento de um cliente de telecomunicações. O uso pretendido é apoiar a priorização de campanhas de retenção, permitindo que a área responsável avalie clientes com maior risco e escolha uma ação apropriada.
+O modelo estima o risco de cancelamento de um cliente de telecomunicações. O uso pretendido é apoiar a priorização de campanhas de retenção, permitindo que a área responsável avalie clientes com maior risco e escolha uma ação apropriada.
 
 Usuários previstos:
 
@@ -23,7 +25,7 @@ Usuários previstos:
 - equipes de CRM e retenção;
 - desenvolvedores responsáveis pela API de inferência.
 
-O resultado não deve ser usado isoladamente para negar serviços, modificar preços, aplicar punições, realizar discriminação ou tomar decisões de alto impacto sem revisão humana.
+O resultado não deve ser usado isoladamente para negar serviços, modificar preços, aplicar punições ou tomar decisões de alto impacto sem revisão humana.
 
 ## 3. Dados
 
@@ -31,137 +33,146 @@ O projeto usa o dataset público **Telco Customer Churn**, distribuído no Kaggl
 
 - volume bruto: 7.043 registros e 21 colunas;
 - alvo: `Churn`, mapeado de `No`/`Yes` para 0/1;
-- prevalência observada de churn: 26,54%;
-- identificador `customerID`: removido do treinamento;
-- `TotalCharges`: convertido para valor numérico;
-- registros inválidos após a conversão: removidos pelo pipeline de treinamento;
-- divisão: 70% treino e 30% teste, estratificada, com `random_state=42`.
+- prevalência de churn: 26,54%;
+- `customerID`: removido da modelagem;
+- `TotalCharges`: convertido para número; 11 ausências foram imputadas com a mediana do treino (1398,12);
+- divisão: 80% treino e 20% teste, estratificada, com `random_state=42`;
+- amostras finais: 5.634 registros de treino e 1.409 de teste.
 
-As variáveis incluem dados demográficos básicos, serviços contratados, tipo de contrato, forma de pagamento, tempo de permanência e cobranças. A documentação original disponível no projeto não informa período de coleta, população amostrada ou cobertura geográfica.
+O projeto não dispõe de informações confiáveis sobre período de coleta, população amostrada ou cobertura geográfica. Não há variável temporal adequada para validação fora do tempo.
 
-## 4. Modelos e pré-processamento
+## 4. Features e pré-processamento
 
-Foram considerados:
+Após engenharia e seleção, os modelos recebem 18 features relacionadas a permanência, cobranças, contrato, internet, método de pagamento e interações entre esses fatores.
 
-- Regressão Logística como baseline;
-- Random Forest com balanceamento de classes;
-- MLPClassifier como rede neural simples.
+A Regressão Logística e a MLP usam `StandardScaler` dentro de uma `Pipeline`. O Random Forest recebe as mesmas 18 features e usa pesos balanceados. A comparação usa os mesmos conjuntos de treino/teste e os mesmos cinco folds estratificados.
 
-O pipeline final aplica:
+Principais configurações finais:
 
-- imputação pela mediana e padronização para variáveis numéricas;
-- imputação pela moda e one-hot encoding para variáveis categóricas;
-- categorias desconhecidas ignoradas no encoder;
-- validação cruzada de 5 folds;
-- ROC-AUC como métrica primária de seleção.
-
-Parâmetros selecionados na execução registrada:
-
-| Modelo | Parâmetros selecionados |
+| Modelo | Configuração |
 |---|---|
-| Random Forest | `n_estimators=300`, `max_depth=10`, `min_samples_split=10`, `class_weight=balanced` |
-| MLP | `hidden_layer_sizes=(64, 32)`, `activation=tanh`, `alpha=0.001`, `max_iter=500`, `early_stopping=True` |
+| Regressão Logística | `C=0.001707`, `solver='saga'`, `class_weight='balanced'`, `max_iter=2000`, `random_state=42` |
+| Random Forest | `n_estimators=198`, `max_depth=5`, `max_features='sqrt'`, `min_samples_leaf=7`, `min_samples_split=6`, `class_weight='balanced'`, `random_state=42` |
+| MLP | uma camada de 16 neurônios, `alpha=1e-5`, `learning_rate_init=1e-4`, `early_stopping=True`, `random_state=42` |
 
-Todos os modelos usam semente fixa igual a 42 quando o estimador oferece esse parâmetro.
+## 5. Protocolo de avaliação
 
-## 5. Avaliação
+O recall da classe churn é a métrica prioritária porque o problema assume que um falso negativo custa mais que uma abordagem desnecessária. Para tornar o trade-off visível, também são avaliados precision, F1, ROC-AUC, PR-AUC, MCC, matriz de confusão e estabilidade em validação cruzada.
 
-### 5.1 Validação cruzada do pipeline final
+Essa prioridade é uma hipótese de negócio, não um custo confirmado. A equipe ainda não recebeu valores monetários nem uma capacidade máxima de campanha.
 
-| Modelo | ROC-AUC médio | Desvio padrão |
-|---|---:|---:|
-| MLP | 0,8481 | 0,0150 |
-| Random Forest | 0,8477 | 0,0147 |
+## 6. Resultados
 
-### 5.2 Teste hold-out
+### 6.1 Validação cruzada estratificada — cinco folds
 
-| Modelo | Accuracy | Precision | Recall | F1 | ROC-AUC |
-|---|---:|---:|---:|---:|---:|
-| Random Forest | 0,7502 | 0,5202 | **0,7790** | **0,6238** | **0,8326** |
-| MLP | **0,7948** | **0,6397** | 0,5223 | 0,5751 | 0,8324 |
+| Modelo | Recall médio | Desvio do recall | ROC-AUC médio |
+|---|---:|---:|---:|
+| Regressão Logística | **0,8870** | **0,0119** | 0,8246 |
+| Random Forest | 0,7987 | 0,0153 | **0,8423** |
+| MLP | 0,5552 | 0,0239 | 0,8235 |
 
-### 5.3 Baseline
+### 6.2 Teste hold-out
 
-O notebook registra ROC-AUC médio de 0,8456 para a Regressão Logística, com desvio padrão de 0,0139. Essa métrica foi produzida em uma execução anterior do notebook, enquanto a tabela final em `models/comparison_results.csv` contém apenas os modelos otimizados MLP e Random Forest. Como as três alternativas não estão registradas no mesmo relatório final, a comparação com o baseline deve ser interpretada como indicativa.
+| Modelo | Accuracy | Precision | Recall | F1 | ROC-AUC | PR-AUC | MCC |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Regressão Logística | 0,6615 | 0,4323 | **0,8797** | 0,5797 | 0,8260 | 0,6242 | 0,4096 |
+| Random Forest | 0,7502 | 0,5194 | 0,7888 | **0,6263** | **0,8432** | **0,6493** | **0,4726** |
+| MLP | **0,7913** | **0,6198** | 0,5535 | 0,5847 | 0,8373 | 0,6444 | 0,4473 |
 
-Para uma conclusão experimental mais forte, recomenda-se executar Regressão Logística, Random Forest e MLP no mesmo conjunto limpo, nos mesmos folds e com o mesmo protocolo de avaliação.
+### 6.3 Incerteza e comparação estatística
 
-## 6. Escolha do modelo
+O recall da Regressão Logística teve IC 95% bootstrap de `[0,845; 0,912]`; o da Random Forest, `[0,747; 0,828]`; e o da MLP, `[0,504; 0,604]`. Os intervalos sustentam a vantagem de recall da Regressão Logística nesta amostra.
 
-O código atual seleciona automaticamente o modelo com maior ROC-AUC médio de validação cruzada. Por essa regra, a **MLP** é copiada para `models/model.joblib` e utilizada pela API.
+Os intervalos de ROC-AUC e PR-AUC dos três modelos se sobrepõem. Portanto, as pequenas diferenças nessas métricas não demonstram, sozinhas, superioridade estatística de separabilidade.
 
-A vantagem observada da MLP sobre a Random Forest é de aproximadamente 0,0004 em ROC-AUC médio, muito menor que o desvio padrão de ambos os modelos. Portanto, os resultados não demonstram uma superioridade prática clara da MLP.
+O teste de McNemar aplicado às classificações mede diferença de erros globais, não diferença específica de recall. Ele favorece a Random Forest sobre a Regressão Logística em acertos totais; não deve ser usado como prova da vantagem de recall do modelo linear.
 
-Há também um trade-off de negócio importante:
+## 7. Escolha do modelo
 
-- MLP: maior accuracy e precision no threshold 0,5, gerando menos abordagens indevidas;
-- Random Forest: maior recall e F1 para churn, deixando de identificar menos clientes que cancelam.
+A **Regressão Logística** é o campeão formal porque maximiza o recall, critério definido para minimizar falsos negativos. Seu artefato é servido pela API.
 
-Se o custo de um falso negativo for alto, a recomendação é testar a Random Forest como modelo operacional ou ajustar o threshold da MLP usando uma função de custo de negócio. A escolha deve ser revalidada antes de produção.
+A decisão é sensível ao objetivo:
 
-## 7. Limitações
+- a Regressão Logística encontra mais clientes que efetivamente cancelam, mas sua precision de 0,4323 produz mais abordagens desnecessárias;
+- a Random Forest oferece o melhor equilíbrio global, vencendo em F1, ROC-AUC, PR-AUC e MCC;
+- a MLP tem maior accuracy e precision no threshold 0,5, mas o pior recall.
 
-- **Generalização:** uma base pública de uma única empresa pode não representar outras operadoras ou períodos.
-- **Temporalidade:** não há coluna temporal adequada para validação fora do tempo ou monitoramento histórico de drift.
-- **Desbalanceamento:** apenas 26,54% dos registros pertencem à classe positiva.
-- **Comparação experimental:** o baseline não aparece no relatório final gerado pelo pipeline modular.
-- **Threshold:** o corte de 0,5 é fixo e não foi otimizado por custo, capacidade da campanha ou calibração.
-- **Probabilidade:** não há avaliação de calibração; o valor retornado não deve ser interpretado como probabilidade perfeitamente calibrada.
-- **Explicabilidade:** o projeto ainda não fornece explicações por predição nem análise de importância estável das variáveis.
-- **Ausência de dados:** o processo remove registros inválidos de `TotalCharges`, o que pode introduzir viés se a ausência não for aleatória.
+Sem custos reais de erros e capacidade da campanha, não é possível afirmar que o campeão formal é também a alternativa economicamente ótima. A Random Forest deve permanecer como candidata operacional.
 
-## 8. Possíveis vieses e riscos
+## 8. Fairness
 
-O dataset inclui `gender`, `SeniorCitizen`, `Partner` e `Dependents`. Mesmo quando úteis para previsão, esses atributos podem gerar diferenças de desempenho ou tratamento entre grupos. Além disso, variáveis de contrato, método de pagamento e serviços podem funcionar como proxies de condição socioeconômica.
+O modelo campeão foi auditado com `fairlearn` por `gender` no conjunto de teste.
 
-Antes de uso real, devem ser comparados, por subgrupo:
+| Métrica | Female | Male | Diferença máxima |
+|---|---:|---:|---:|
+| Accuracy | 0,6623 | 0,6607 | 0,0016 |
+| Selection rate | 0,5488 | 0,5319 | 0,0169 |
+| False positive rate | 0,4211 | 0,4140 | 0,0070 |
+| False negative rate | 0,1244 | 0,1160 | 0,0083 |
 
-- taxa de positivos prevista;
-- recall e taxa de falsos negativos;
-- precision e taxa de falsos positivos;
-- calibração das probabilidades;
-- impacto das ações de retenção resultantes.
+Nenhuma diferença ultrapassou 2 pontos percentuais. Esse resultado vale somente para gênero, nesta amostra, com o threshold atual. Ele não comprova ausência de viés em outros atributos, interseções de grupos, períodos ou populações.
 
-Não há, no pipeline atual, evidência suficiente para afirmar equidade entre grupos.
+## 9. Limitações e riscos
 
-## 9. Recomendações de monitoramento
+- **Generalização:** uma base pública de uma única empresa pode não representar outras operadoras.
+- **Temporalidade:** não há validação fora do tempo nem evidência sobre drift histórico.
+- **Desbalanceamento:** somente 26,54% dos registros pertencem à classe positiva.
+- **Threshold:** o corte 0,5 não foi escolhido por custo, orçamento ou capacidade operacional.
+- **Calibração:** não há Brier score, curva de calibração ou calibração pós-treino; a saída não deve ser interpretada como probabilidade perfeitamente calibrada.
+- **Fairness:** somente gênero foi auditado e não houve avaliação interseccional.
+- **Explicabilidade:** a API ainda não fornece justificativas locais por predição.
+- **Feature engineering:** a API reproduz 18 features manualmente e usa uma mediana fixa do treino; qualquer novo treinamento exige validação de compatibilidade.
+- **Segurança:** contas fixas e chave JWT padrão servem somente para demonstração local.
+- **Persistência:** artefatos `joblib`/pickle só devem ser carregados de origem confiável.
 
-Em produção, monitorar:
+## 10. Monitoramento recomendado
 
-- qualidade, schema, faixas e categorias das entradas;
+Em uma implantação real, monitorar:
+
+- schema, categorias e faixas das entradas;
 - taxa prevista e taxa real de churn;
-- ROC-AUC, precision, recall, F1 e calibração após chegada dos rótulos;
-- métricas separadas por subgrupos relevantes;
-- drift das variáveis e das probabilidades previstas;
+- precision, recall, F1, ROC-AUC, PR-AUC e calibração após chegada dos rótulos;
+- métricas por subgrupos e interseções relevantes;
+- drift das features e das probabilidades;
 - latência, erros HTTP e indisponibilidade do modelo;
-- volume e resultado das campanhas de retenção.
+- volume, custo e resultado das campanhas de retenção.
 
-Definir alertas e uma frequência de retreinamento somente após observar a velocidade real de mudança dos dados e o tempo de chegada do churn confirmado.
+Threshold, alertas e frequência de retreinamento devem ser definidos a partir dos custos e da velocidade real de mudança dos dados.
 
-## 10. Segurança e privacidade
+## 11. Segurança e privacidade
 
-- não registrar payloads com dados pessoais sem necessidade e base legal;
-- aplicar minimização de dados, controle de acesso, criptografia e política de retenção;
-- substituir usuários e senhas de demonstração por um provedor de identidade;
-- substituir a chave JWT padrão por segredo forte e gerenciado fora do código;
-- revisar permissões e trilhas de auditoria antes de disponibilizar a API.
+- coletar e armazenar somente dados necessários e com base legal;
+- não registrar payloads pessoais sem necessidade;
+- aplicar controle de acesso, criptografia, retenção e trilha de auditoria;
+- substituir usuários fixos por um provedor de identidade;
+- manter a chave JWT em um gerenciador de segredos;
+- manter revisão humana sobre as ações de retenção.
 
-## 11. Reprodução
+## 12. Reprodução
 
 ```bash
-python scripts/setup.py
-python -m src.train_model.train
-python -m pytest -q
-python -m uvicorn src.api.main:app --reload
+python -m pip install uv
+uv sync --dev
+uv run python scripts/setup.py
+cd notebooks
+uv run jupyter notebook
 ```
 
-Os artefatos de dados e modelos não são versionados. A reprodução exige acesso ao dataset e execução do treinamento no ambiente de destino.
+Execute `eda_churn_prediction.ipynb`, `modelagem_avaliacao_churn_prediction.ipynb` e `fairness_churn_prediction.ipynb`, nessa ordem. Depois, a partir da raiz:
 
-## 12. Próximos passos
+```bash
+uv run pytest -q
+uv run uvicorn src.api.main:app --reload
+```
 
-1. incluir a Regressão Logística no relatório modular final;
-2. definir custos de falso positivo e falso negativo com a área de negócio;
-3. selecionar e validar o threshold com dados de validação separados;
-4. avaliar calibração e métricas por subgrupo;
-5. adicionar versionamento de dados, modelo e métricas;
-6. validar o modelo com dados recentes da operadora antes de produção.
+O download exige uma credencial Kaggle local. A API da entrega carrega `notebooks/models/champion_model.joblib`.
+
+## 13. Próximos passos
+
+1. definir custos de falso positivo e falso negativo e a capacidade da campanha;
+2. selecionar o threshold em validação separada e confirmar o ganho em teste final intocado;
+3. avaliar e, se necessário, calibrar probabilidades;
+4. ampliar a auditoria de fairness e incluir análise interseccional;
+5. eliminar duplicidades entre o fluxo modular e o fluxo final dos notebooks;
+6. adicionar versionamento formal de dados e artefatos;
+7. validar o modelo em dados recentes e representativos da operadora.
