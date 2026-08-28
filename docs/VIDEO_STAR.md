@@ -65,7 +65,7 @@ Se preferir o Swagger, execute `POST /auth/login` com `admin/admin`. O navegador
 
 ### 4:20–4:50 — Fechamento
 
-> Como resultado, entregamos EDA, comparação controlada dos três modelos, auditoria de fairness, modelo persistido e API funcional. O Model Card registra as limitações: base pública, threshold fixo em 0,5, probabilidades ainda não calibradas e fairness avaliada somente por gênero. Antes de produção, definiríamos custos de negócio, ajustaríamos o threshold, validaríamos em dados recentes e ampliaríamos o monitoramento e a análise por subgrupos. Obrigado!
+> Como resultado, entregamos três modelos comparados, auditoria de fairness e API funcional. A Regressão Logística alcançou recall de 0,8797, e a esteira aprovou 20 testes, com 72% de cobertura e cinco workflows concluídos. Permanecem como limitações o threshold fixo, a ausência de calibração e a fairness restrita a gênero. Antes de produção, validaríamos dados recentes e custos de negócio. Obrigado!
 
 ## Payload de reserva
 
