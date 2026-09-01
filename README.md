@@ -2,6 +2,10 @@
 
 Projeto do Tech Challenge — Fase 1 da FIAP Pós-Tech. A solução percorre análise exploratória, definição de métricas, treinamento e comparação de modelos, auditoria de fairness e disponibilização de inferência por uma API FastAPI.
 
+## Vídeo de apresentação
+
+[Assista ao vídeo STAR do projeto no YouTube](https://youtu.be/mdZhZsDLKgU).
+
 ## Problema de negócio
 
 Uma operadora de telecomunicações quer identificar antecipadamente clientes com maior propensão ao cancelamento para priorizar ações de retenção. O modelo serve como apoio à decisão e não deve tomar decisões automáticas sobre clientes.
