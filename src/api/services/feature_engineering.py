@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 
 # Mediana de TotalCharges no treino (EDA, random_state=42, test_size=0.2).
 TOTAL_CHARGES_TRAIN_MEDIAN = 1398.12
@@ -108,3 +109,29 @@ def transform_customer_features(customer_data: dict[str, Any]) -> pd.DataFrame:
     }
 
     return pd.DataFrame([features], columns=CHAMPION_FEATURE_COLUMNS)
+
+
+class FeatureEngineeringTransformer(BaseEstimator, TransformerMixin):
+    """Wrapper sklearn-compatível em torno de ``transform_customer_features``.
+
+    Segue a mesma convenção fit/transform que qualquer outro passo do
+    scikit-learn (duck typing: basta implementar ``fit``/``transform`` para
+    ser tratado como parte do ecossistema, sem herança complexa — Aula 7).
+    Isso permite compor a engenharia de features com o modelo treinado em
+    um único ``sklearn.pipeline.Pipeline``, com uma única interface
+    ``predict``/``predict_proba`` de ponta a ponta, em vez de chamar a
+    função manualmente antes de invocar o modelo.
+
+    Não possui estado a ajustar (a transformação é puramente derivada do
+    payload de entrada), então ``fit`` apenas retorna ``self``.
+    """
+
+    def fit(
+        self, X: dict[str, Any], y: Any = None
+    ) -> "FeatureEngineeringTransformer":
+        """Não-op: a transformação não depende de dados de treino."""
+        return self
+
+    def transform(self, X: dict[str, Any]) -> pd.DataFrame:
+        """Aplica ``transform_customer_features`` ao payload bruto do cliente."""
+        return transform_customer_features(X)

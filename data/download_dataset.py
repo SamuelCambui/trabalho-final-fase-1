@@ -1,9 +1,6 @@
 from pathlib import Path
-import os
-import zipfile
 
 from kaggle.api.kaggle_api_extended import KaggleApi
-
 
 # Diretório raiz do projeto
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

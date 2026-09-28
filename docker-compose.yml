@@ -1,0 +1,86 @@
+# Docker Compose - Stack de Monitoramento
+# Roda: API (churn) + Prometheus + Grafana
+# Uso: docker-compose up -d
+#
+# Serviços disponíveis após subir:
+#   API......... http://localhost:8000  (docs em /docs)
+#   Prometheus.. http://localhost:9090
+#   Grafana..... http://localhost:3000  (login: admin / admin)
+
+services:
+  # API FastAPI com métricas (logs estruturados + Prometheus)
+  api:
+    build: .
+    container_name: churn_api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      # Em produção real, gere uma chave forte:
+      #   python -c "import secrets; print(secrets.token_hex(32))"
+      - SECRET_KEY=${SECRET_KEY:-altere-esta-chave-em-producao}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+    volumes:
+      # O modelo treinado é montado como volume (somente leitura),
+      # não fica embutido na imagem — ver comentário no Dockerfile
+      # e no .dockerignore.
+      - ./notebooks/models:/app/notebooks/models:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - monitoring
+
+  # Prometheus - coleta as métricas expostas em /metrics
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: churn_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    depends_on:
+      - api
+    networks:
+      - monitoring
+
+  # Grafana - visualiza as métricas coletadas pelo Prometheus
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: churn_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      # Provisionamento automático: datasource do Prometheus e o
+      # dashboard já vêm prontos no primeiro "docker-compose up",
+      # sem precisar configurar nada manualmente pela UI.
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+# Volumes persistentes: sobrevivem a "docker-compose down" (mas não a
+# "docker-compose down -v").
+volumes:
+  prometheus_data:
+  grafana_data:
+
+# Rede isolada para comunicação entre os três containers.
+networks:
+  monitoring:
+    driver: bridge

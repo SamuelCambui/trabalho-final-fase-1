@@ -1,0 +1,23 @@
+# Configuração do Prometheus: de quem coletar métricas e com que
+# frequência ("scrape"), e onde ficam as regras de alerta.
+
+global:
+  scrape_interval: 15s      # frequência padrão de coleta
+  evaluation_interval: 15s  # frequência de avaliação das regras de alerta
+
+rule_files:
+  - "alerts.yml"
+
+scrape_configs:
+  # A própria API expõe métricas em /metrics (configurado em
+  # src/api/main.py via prometheus-fastapi-instrumentator).
+  - job_name: "churn-api"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]  # nome do serviço no docker-compose.yml
+
+  # O próprio Prometheus expõe métricas sobre si mesmo — útil para
+  # monitorar "quem monitora o monitor".
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

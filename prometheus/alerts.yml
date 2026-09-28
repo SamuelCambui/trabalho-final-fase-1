@@ -1,0 +1,56 @@
+# Regras de alerta do Prometheus.
+#
+# Evite alertar demais ("alert fatigue"): foque em condições que
+# realmente exigem intervenção humana, com um período mínimo (`for`)
+# antes de disparar, para não alertar por picos passageiros.
+
+groups:
+  - name: churn-api-alerts
+    rules:
+      # Erro 5xx elevado: mais de 5% das respostas com erro de
+      # servidor, sustentado por 2 minutos.
+      - alert: HighErrorRate
+        expr: >
+          rate(http_requests_total{status=~"5.."}[5m])
+          /
+          rate(http_requests_total[5m])
+          > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taxa de erros 5xx acima de 5% na Churn API"
+          description: >
+            Mais de 5% das requisições dos últimos 5 minutos
+            resultaram em erro de servidor (5xx).
+
+      # Latência alta e constante: p95 acima de 1 segundo por mais
+      # de 5 minutos indica degradação de performance.
+      - alert: HighLatency
+        expr: >
+          histogram_quantile(
+            0.95,
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latência p95 acima de 1s na Churn API"
+          description: >
+            95% das requisições estão levando mais de 1 segundo
+            para responder nos últimos 5 minutos.
+
+      # Modelo não carregado: a Gauge model_loaded (definida em
+      # src/api/metrics.py) caiu para 0 — a API está respondendo,
+      # mas incapaz de servir predições.
+      - alert: ModelNotLoaded
+        expr: model_loaded == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Modelo de churn não está carregado"
+          description: >
+            A métrica model_loaded está em 0 há mais de 1 minuto.
+            A API está no ar, mas /predict provavelmente retorna 503.

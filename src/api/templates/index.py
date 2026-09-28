@@ -2,7 +2,6 @@
 
 from fastapi.responses import HTMLResponse
 
-
 HTML_PAGE = """
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -1916,7 +1915,8 @@ HTML_PAGE = """
                     </h2>
 
                     <p>
-                        Analise o perfil do cliente e estime a probabilidade de cancelamento.
+                        Analise o perfil do cliente e estime a
+                        probabilidade de cancelamento.
                     </p>
 
                 </div>
@@ -3131,7 +3131,8 @@ function updateRiskVisual(
             "Risco de cancelamento";
 
         predictionDescription.textContent =
-            "O modelo identificou características associadas a um possível cancelamento deste cliente.";
+            "O modelo identificou características associadas a um " +
+            "possível cancelamento deste cliente.";
 
     } else {
 
@@ -3154,7 +3155,8 @@ function updateRiskVisual(
             "Cliente com menor risco";
 
         predictionDescription.textContent =
-            "O modelo não identificou características associadas a um risco elevado de cancelamento.";
+            "O modelo não identificou características associadas a " +
+            "um risco elevado de cancelamento.";
     }
 
 }

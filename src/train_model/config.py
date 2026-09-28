@@ -29,3 +29,11 @@ MLP_PARAM_GRID = {
     "classifier__activation": ["relu", "tanh"],
     "classifier__alpha": [0.0001, 0.001, 0.01],
 }
+
+# ==========================================================
+# MLflow (tracking do pipeline de treino automatizado / CI)
+# ==========================================================
+MLFLOW_EXPERIMENT_NAME = "churn-prediction-cicd"
+MODEL_REGISTRY_NAME = "churn-model"
+PRIMARY_METRIC = "roc_auc"  # mesma metrica usada na comparacao por CV (SCORING)
+MIN_ACCEPTABLE_METRIC = 0.60  # abaixo disso, pipeline falha (algo muito errado)

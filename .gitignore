@@ -56,3 +56,6 @@ cookies.txt
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# MLflow (tracking local do pipeline de treino automatizado)
+mlruns_local/S

@@ -1,0 +1,303 @@
+name: CI/CD
+
+on:
+  push:
+    branches: ["main", "develop"]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/ci-cd.yml"
+  pull_request:
+    branches: ["main", "develop"]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/ci-cd.yml"
+  workflow_dispatch: {}
+
+jobs:
+
+  # ==========================================================
+  # 1. LINT + TESTES + COBERTURA
+  # ==========================================================
+  quality-gate:
+    name: Lint, Testes e Cobertura
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache de dependencias (uv)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Instalar dependências
+        run: uv sync --dev
+
+      - name: Lint com ruff
+        run: uv run ruff check src/ tests/
+
+      - name: Format check
+        run: uv run ruff format --check src/ tests/
+
+      - name: Rodar testes com cobertura
+        run: |
+          uv run pytest \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-fail-under=70
+
+  # ==========================================================
+  # 2. SECRETS SCAN
+  # ==========================================================
+  secrets-scan:
+    name: Detectar Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================================
+  # 3. QUALIDADE DOS DADOS
+  # ==========================================================
+  data-quality:
+    name: Qualidade dos Dados
+    runs-on: ubuntu-latest
+    needs: quality-gate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache de dependencias (uv)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Instalar dependências
+        run: uv sync --dev
+
+      - name: Configurar credenciais do Kaggle
+        env:
+          KAGGLE_JSON: ${{ secrets.KAGGLE_JSON }}
+        run: |
+          if [ -z "$KAGGLE_JSON" ]; then
+            echo "[ERRO] Secret KAGGLE_JSON não configurado."
+            exit 1
+          fi
+          mkdir -p "$HOME/.kaggle"
+          printf '%s' "$KAGGLE_JSON" > "$HOME/.kaggle/kaggle.json"
+          chmod 600 "$HOME/.kaggle/kaggle.json"
+          echo "[OK] Credenciais do Kaggle configuradas."
+
+      - name: Preparar projeto (baixar dataset)
+        run: uv run python scripts/setup.py
+
+      - name: Validar dataset
+        run: |
+          test -f "data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv"
+          echo "[OK] Dataset encontrado."
+          ls -lh data/raw/
+
+      - name: Rodar testes de qualidade dos dados
+        run: uv run pytest tests/test_data_quality.py -v
+
+      # Publica o dataset baixado como artifact para os jobs seguintes
+      # reaproveitarem, em vez de baixar do Kaggle de novo.
+      - name: Publicar dataset como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataset-raw
+          path: data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+          retention-days: 1
+
+  # ==========================================================
+  # 4. ML QUALITY GATE
+  #    Treina, loga no MLflow (mlruns_ci_snapshot/, versionado no
+  #    git) e so promove o alias "Production" se a metrica principal
+  #    (roc_auc) superar a melhor versao ja registrada.
+  # ==========================================================
+  ml-validation:
+    name: Validar Modelo
+    runs-on: ubuntu-latest
+    needs: data-quality
+    # necessario para o job poder commitar o snapshot do MLflow de volta
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache de dependencias (uv)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Instalar dependências
+        run: uv sync --dev
+
+      # Reaproveita o dataset ja baixado no job data-quality,
+      # em vez de autenticar no Kaggle de novo.
+      - name: Baixar dataset (artifact)
+        uses: actions/download-artifact@v4
+        with:
+          name: dataset-raw
+          path: data/raw/
+
+      - name: Treinar modelo e logar no MLflow
+        env:
+          MLFLOW_TRACKING_FOLDER: mlruns_ci_snapshot
+        run: uv run python -m src.train_model.train
+
+      - name: Validar modelo gerado
+        run: |
+          test -f "models/model.joblib"
+          echo "[OK] Modelo encontrado."
+          ls -lh models/model.joblib
+
+      - name: Validar métricas do modelo
+        run: uv run pytest tests/test_model_metrics.py -v
+
+      - name: Testar API
+        run: uv run pytest tests/test_api.py -v
+
+      # So registra/promove no Model Registry apos o treino ter
+      # passado nos testes acima (nao registra modelo quebrado).
+      - name: Registrar e promover modelo (Model Registry)
+        env:
+          MLFLOW_TRACKING_FOLDER: mlruns_ci_snapshot
+        run: uv run python -m src.train_model.register_model
+
+      # Persiste o historico de runs/registry no repo, para o proximo
+      # job de ml-validation poder comparar com a versao anterior.
+      # So roda em push (nao em PR) para nao precisar lidar com
+      # permissao de escrita em branch de PR de fork.
+      - name: Salvar snapshot do MLflow no repositorio
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add mlruns_ci_snapshot/
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca no snapshot do MLflow."
+          else
+            git commit -m "chore(mlflow): atualiza snapshot de tracking [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+
+  # ==========================================================
+  # 5. BUILD, PUSH E DEPLOY
+  # ==========================================================
+  # Reativado: Dockerfile, docker-compose.yml e os diretórios
+  # grafana/ e prometheus/ já existem e estão preenchidos.
+
+  build-test-deploy:
+    name: Build, Push e Deploy
+    runs-on: ubuntu-latest
+    needs: [quality-gate, secrets-scan, data-quality, ml-validation]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t churn-api:${{ github.sha }} .
+
+      - name: Validar docker-compose.yml (API + Prometheus + Grafana)
+        run: docker compose config --quiet
+
+      - name: Tag for registry (simulado)
+        run: |
+          echo "Tagging image: churn-api:${{ github.sha }}"
+          docker tag churn-api:${{ github.sha }} churn-api:latest
+
+      - name: Push to registry (simulado)
+        run: |
+          echo "Simulating push to registry..."
+          echo "Image: churn-api:${{ github.sha }}"
+
+      - name: Deploy to staging (simulado)
+        run: |
+          echo "Deploying to staging environment..."
+          echo "Image tag: ${{ github.sha }}"
+
+      - name: Health check (simulado)
+        run: |
+          echo "Running health check on staging..."
+          echo "curl http://staging.example.com/health"
+
+  # ==========================================================
+  # 6. RESUMO
+  # ==========================================================
+  summary:
+    name: Resumo do Pipeline
+    runs-on: ubuntu-latest
+    needs: [quality-gate, secrets-scan, data-quality, ml-validation]
+    if: always()
+    steps:
+      - name: Gerar resumo
+        run: |
+          {
+            echo "## Resumo do Pipeline"
+            echo ""
+            echo "| Etapa | Resultado |"
+            echo "|---|---|"
+            echo "| Lint, Testes e Cobertura | ${{ needs.quality-gate.result }} |"
+            echo "| Secrets Scan | ${{ needs.secrets-scan.result }} |"
+            echo "| Qualidade dos Dados | ${{ needs.data-quality.result }} |"
+            echo "| Validação do Modelo (MLflow) | ${{ needs.ml-validation.result }} |"
+            echo ""
+            echo "Confira o Model Registry no snapshot \`mlruns_ci_snapshot/\` do repositório."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -9,10 +9,23 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import json
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
+import mlflow
+import mlflow.sklearn
+
 from src.train_model.comparison import compare_models, evaluate_on_test
-from src.train_model.config import BEST_MODEL_PATH, DATA_DIR
+from src.train_model.config import (
+    BEST_MODEL_PATH,
+    DATA_DIR,
+    MIN_ACCEPTABLE_METRIC,
+    MLFLOW_EXPERIMENT_NAME,
+    PRIMARY_METRIC,
+)
+from src.train_model.mlflow_utils import resolve_tracking_paths
 from src.train_model.preprocessing import (
     clean_data,
     load_data,
@@ -82,8 +95,91 @@ def main() -> None:
     caminho_melhor = save_model(melhor_modelo, BEST_MODEL_PATH)
     print(f"Melhor modelo salvo para API em: {caminho_melhor}")
 
+    resultados_teste: dict[str, dict] = {}
     for nome, modelo in modelos.items():
-        evaluate_on_test(modelo, x_test, y_test, nome)
+        resultados_teste[nome] = evaluate_on_test(modelo, x_test, y_test, nome)
+
+    log_mlflow(
+        melhor_nome=melhor_nome,
+        melhor_modelo=melhor_modelo,
+        resultados_cv=resultados_cv,
+        resultados_teste=resultados_teste,
+        x_train=x_train,
+    )
+
+    metrica_principal = resultados_teste[melhor_nome]["metrics"][PRIMARY_METRIC]
+    if metrica_principal < MIN_ACCEPTABLE_METRIC:
+        print(
+            f"\n[ERRO] {PRIMARY_METRIC}={metrica_principal:.4f} abaixo do minimo "
+            f"aceitavel ({MIN_ACCEPTABLE_METRIC}). Verifique dados/hiperparametros."
+        )
+        sys.exit(1)
+
+
+def log_mlflow(
+    *,
+    melhor_nome: str,
+    melhor_modelo,
+    resultados_cv,
+    resultados_teste: dict[str, dict],
+    x_train,
+) -> None:
+    """Loga parametros, metricas e o modelo vencedor no MLflow.
+
+    Tambem grava um arquivo ``latest_run.json`` na pasta de tracking, usado
+    pelo ``register_model.py`` para registrar/promover a versao no Model
+    Registry (ponte entre o job de treino e o job de registro no CI).
+    """
+    tracking_uri, tracking_dir = resolve_tracking_paths()
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    print(f"\nMLflow tracking URI: {tracking_uri}")
+
+    run_name = melhor_nome.lower().replace(" ", "_")
+    with mlflow.start_run(run_name=run_name) as run:
+        mlflow.log_param("modelo_selecionado", melhor_nome)
+
+        for _, linha in resultados_cv.iterrows():
+            nome_modelo = linha["Modelo"].lower().replace(" ", "_")
+            mlflow.log_metric(f"cv_{nome_modelo}_roc_auc", linha["ROC-AUC Médio"])
+
+        for nome_modelo, resultado in resultados_teste.items():
+            prefixo = nome_modelo.lower().replace(" ", "_")
+            for metrica, valor in resultado["metrics"].items():
+                mlflow.log_metric(f"{prefixo}_test_{metrica}", valor)
+
+        metricas_vencedor = resultados_teste[melhor_nome]["metrics"]
+
+        model_info = mlflow.sklearn.log_model(
+            sk_model=melhor_modelo,
+            name="model",
+            input_example=x_train.iloc[:5],
+        )
+
+        print(f"  Run ID: {run.info.run_id}")
+        print(f"  Model URI: {model_info.model_uri}")
+
+        metadata = {
+            "run_id": run.info.run_id,
+            "model_uri": model_info.model_uri,
+            "modelo_selecionado": melhor_nome,
+            PRIMARY_METRIC: metricas_vencedor[PRIMARY_METRIC],
+            "metrics": metricas_vencedor,
+            "logged_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        metadata_path = (
+            Path(tracking_dir) / "latest_run.json" if tracking_dir else None
+        )
+        if metadata_path:
+            metadata_path.write_text(
+                json.dumps(metadata, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            print(f"  Metadata salva em: {metadata_path}")
+            print("  -> Execute register_model.py para atualizar o Model Registry.")
+        else:
+            print("  [AVISO] Nao foi possivel determinar caminho para a metadata.")
 
 
 if __name__ == "__main__":

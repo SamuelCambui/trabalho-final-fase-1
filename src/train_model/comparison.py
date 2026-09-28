@@ -9,13 +9,13 @@ from sklearn.base import BaseEstimator
 from sklearn.model_selection import cross_validate
 
 from src.train_model.config import COMPARISON_REPORT_PATH, CV_FOLDS, SCORING
-
-CV_SCORE_LABEL = "ROC-AUC Médio"
 from src.train_model.utils import (
     compute_classification_metrics,
     ensure_models_dir,
     print_evaluation_report,
 )
+
+CV_SCORE_LABEL = "ROC-AUC Médio"
 
 
 def cross_validate_model(

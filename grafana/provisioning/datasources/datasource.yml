@@ -1,0 +1,16 @@
+# Provisionamento automático da fonte de dados do Prometheus.
+#
+# Equivalente automatizado dos passos manuais "Adicionar nova Data
+# Source" -> "Prometheus" -> preencher a URL, feitos pela UI do
+# Grafana no material do curso. Aqui isso acontece sozinho na
+# primeira subida do container, sem intervenção manual.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
