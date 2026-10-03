@@ -99,6 +99,13 @@ Não foi observada diferença superior a 2 pontos percentuais nesse recorte. Iss
 │   ├── MODEL_CARD.md
 │   ├── VIDEO_STAR.md
 │   └── MLCanvas.docx
+├── grafana/
+│   └── provisioning/              # configuração automática do Grafana
+│       ├── dashboards/
+│       │   ├── dashboard.yml
+│       │   └── churn-api-overview.json
+│       └── datasources/
+│           └── datasource.yml     # conexão com o Prometheus
 ├── models/
 │   └── comparison_results.csv      # tabela definitiva dos três modelos
 ├── notebooks/
@@ -106,13 +113,19 @@ Não foi observada diferença superior a 2 pontos percentuais nesse recorte. Iss
 │   ├── fairness_churn_prediction.ipynb
 │   ├── modelagem_avaliacao_churn_prediction.ipynb
 │   └── models/                     # campeão e alternativa usados na entrega
+├── prometheus/
+│   ├── prometheus.yml             # coleta de métricas
+│   └── alerts.yml                 # regras de alerta
 ├── scripts/setup.py
 ├── src/
 │   ├── api/                        # routers, schemas, services e interface web
 │   └── train_model/                # pipeline modular de treinamento
 ├── tests/
+├── .env.example                   # exemplo de configuração, sem segredos
+├── Dockerfile
+├── docker-compose.yml             # API + Prometheus + Grafana
 ├── pyproject.toml
-└── uv.lock
+└── poetry.lock
 ```
 
 O notebook antigo `notebook.ipynb` e o treinamento modular em `src/train_model/` permanecem como histórico de desenvolvimento. A fonte da comparação final e do artefato servido é a sequência de notebooks em `notebooks/`.
@@ -131,16 +144,16 @@ A divisão abaixo foi conferida no histórico de commits e registra as principai
 
 ## Instalação
 
-Pré-requisitos: Git, Python 3.13 e [uv](https://docs.astral.sh/uv/).
+Pré-requisitos: Git, Python 3.13 e [Poetry](https://python-poetry.org/).
 
 ```bash
 git clone https://github.com/SamuelCambui/trabalho-final-fase-1.git
 cd trabalho-final-fase-1
-python -m pip install uv
-uv sync --dev
+python -m pip install poetry
+poetry install --with notebooks
 ```
 
-O `pyproject.toml` e o `uv.lock` são as fontes de dependências do projeto.
+O `pyproject.toml` e o `poetry.lock` são as fontes de dependências do projeto.
 
 ### Download do dataset
 
@@ -149,7 +162,7 @@ O `pyproject.toml` e o `uv.lock` são as fontes de dependências do projeto.
 3. Execute:
 
 ```bash
-uv run python scripts/setup.py
+poetry run python scripts/setup.py
 ```
 
 O script baixa `blastchar/telco-customer-churn` e valida o CSV em `data/raw/`. O `kaggle.json` é ignorado pelo Git e nunca deve ser versionado.
@@ -162,7 +175,7 @@ Depois do setup, abra os notebooks a partir da pasta `notebooks/` e execute-os n
 
 ```bash
 cd notebooks
-uv run jupyter notebook
+poetry run jupyter notebook
 ```
 
 1. `eda_churn_prediction.ipynb`;
@@ -177,7 +190,7 @@ O modelo campeão necessário para a demonstração está versionado no reposit�
 
 ```bash
 cp .env.example .env
-uv run uvicorn src.api.main:app --reload
+poetry run uvicorn src.api.main:app --reload
 ```
 
 Acesse:
@@ -186,7 +199,7 @@ Acesse:
 - Swagger: <http://127.0.0.1:8000/docs>;
 - health check: <http://127.0.0.1:8000/health>.
 
-Credenciais locais de demonstração: `admin/admin` ou `user/user`.
+Use o usuário e a senha definidos no seu `.env`.
 
 ### Endpoints
 
@@ -207,7 +220,7 @@ O login grava o cookie em um arquivo local:
 ```bash
 curl -c cookies.txt -X POST http://127.0.0.1:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin"}'
+  -d '{"username":"admin","password":"SUA_SENHA"}'
 ```
 
 Use o cookie na predição:
@@ -247,18 +260,126 @@ Resposta observada com o artefato versionado:
 }
 ```
 
+## Monitoramento com Prometheus e Grafana
+
+O projeto disponibiliza uma stack com a API FastAPI, Prometheus para coleta
+de métricas e Grafana para visualização. A API expõe as métricas em `/metrics`;
+o Prometheus consulta esse endpoint a cada 15 segundos. O Grafana usa o
+Prometheus como fonte de dados.
+
+### Subir a stack
+
+Pré-requisitos: Docker com Docker Compose, `pyproject.toml`, `poetry.lock` e
+o modelo `notebooks/models/champion_model.joblib` disponível. O modelo é
+montado no container da API como volume somente leitura.
+
+Na raiz do projeto, crie o arquivo de configuração (PowerShell):
+
+```powershell
+Copy-Item .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Copie a chave gerada para `SECRET_KEY` no `.env` e preencha
+`API_ADMIN_PASSWORD`, `API_USER_PASSWORD` e `GF_SECURITY_ADMIN_PASSWORD`.
+Os usuários são configurados por `API_ADMIN_USERNAME`, `API_USER_USERNAME`
+e `GF_SECURITY_ADMIN_USER`. Se já tiver um `.env`, edite-o sem sobrescrevê-lo.
+
+Depois, execute:
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+| Serviço | Endereço padrão | Uso |
+|---|---|---|
+| API | http://localhost:8000/docs | Autenticação e predições |
+| Métricas | http://localhost:8000/metrics | Métricas expostas pela API |
+| Prometheus | http://localhost:9090 | Consultas PromQL, targets e alertas |
+| Grafana | http://localhost:3000 | Dashboard de monitoramento |
+
+As portas externas podem ser alteradas no `.env` usando `API_PORT`,
+`PROMETHEUS_PORT` e `GRAFANA_PORT`. Os endereços internos dos containers
+permanecem `api:8000` e `prometheus:9090`.
+
+### Dashboard e métricas
+
+Faça login no Grafana com `GF_SECURITY_ADMIN_USER` e
+`GF_SECURITY_ADMIN_PASSWORD`. A fonte de dados **Prometheus** e o dashboard
+**Churn API - Visão Geral** são provisionados automaticamente pelos arquivos
+em `grafana/provisioning/`. Abra o dashboard na área **Dashboards**.
+
+| Métrica | Informação acompanhada |
+|---|---|
+| `http_requests_total` | Quantidade de requisições HTTP |
+| `http_request_duration_seconds` | Distribuição da latência HTTP |
+| `churn_predictions_total` | Predições por classe e usuário |
+| `churn_prediction_latency_seconds` | Distribuição da latência das predições |
+| `login_attempts_total` | Tentativas de login por status |
+| `api_errors_total` | Erros por endpoint e tipo |
+| `model_loaded` | Modelo carregado (`1`) ou indisponível (`0`) |
+| `prediction_avg_confidence` | Média cumulativa das probabilidades de churn desde a inicialização da API |
+
+Para alimentar os gráficos, realize logins e predições pela interface ou pelo
+Swagger e aguarde as coletas. Painéis baseados em `rate` e percentis precisam
+de várias amostras; podem ficar vazios logo após a inicialização.
+
+No Prometheus, abra **Status → Targets** e confira se `churn-api` está **UP**.
+Exemplos de consultas:
+
+```promql
+# Disponibilidade da coleta da API
+up{job="churn-api"}
+
+# Requisições por segundo
+sum(rate(http_requests_total{job="churn-api"}[5m]))
+
+# Estado do modelo
+model_loaded{job="churn-api"}
+
+# Latência p95 das predições, em segundos
+histogram_quantile(0.95, sum by (le) (rate(churn_prediction_latency_seconds_bucket{job="churn-api"}[5m])))
+```
+
+### Alertas e operação
+
+O arquivo `prometheus/alerts.yml` contém três regras, avaliadas a cada 15 segundos:
+
+| Regra | Objetivo configurado | Tempo de persistência |
+|---|---|---|
+| `HighErrorRate` | Detectar proporção de erros 5xx acima de 5% | 2 minutos |
+| `HighLatency` | Detectar latência HTTP p95 acima de 1 segundo | 5 minutos |
+| `ModelNotLoaded` | Detectar `model_loaded == 0` | 1 minuto |
+
+Consulte os estados das regras na área **Alerts** do Prometheus. A stack
+atual não inclui Alertmanager nem envio automático de notificações.
+As consultas de erro e latência existentes precisam de validação com as
+séries e labels efetivamente expostas pela API antes de uso operacional.
+
+Para consultar logs e parar os serviços:
+
+```bash
+docker compose logs --tail=100 api prometheus grafana
+docker compose down
+```
+
+Os volumes `prometheus_data` e `grafana_data` mantêm os dados após
+`docker compose down`. O comando `docker compose down -v` também remove
+esses volumes e seus dados.
+
 ## Testes
 
 Os testes independentes do dataset podem ser executados logo após a instalação:
 
 ```bash
-uv run pytest -q tests/test_api.py tests/test_preprocessing.py tests/tests/test_train.py
+poetry run pytest -q tests/test_api.py tests/test_preprocessing.py tests/test_train.py
 ```
 
 Após baixar o dataset, execute a suíte completa:
 
 ```bash
-uv run pytest -q
+poetry run pytest -q
 ```
 
 Os jobs que usam o dataset dependem do secret `KAGGLE_JSON`.
@@ -323,3 +444,20 @@ Antes de qualquer uso real, são necessários dados recentes da operadora, defin
 - [Model Card](docs/MODEL_CARD.md)
 - [Roteiro e plano de gravação do vídeo STAR](docs/VIDEO_STAR.md)
 - [ML Canvas](docs/MLCanvas.docx)
+
+## Dependências e configuração com Poetry
+
+Use Python 3.13. Produção: `poetry install --only main`.
+Desenvolvimento: `poetry install`. Notebooks: `poetry install --with notebooks`.
+As dependências de visualização, fairness e análise estatística ficam no grupo
+opcional `notebooks`; pytest, Ruff e httpx ficam em `dev`.
+
+Antes de iniciar a API, copie `.env.example` para `.env` (no PowerShell:
+`Copy-Item .env.example .env`). Preencha SECRET_KEY, API_ADMIN_PASSWORD,
+API_USER_PASSWORD e GF_SECURITY_ADMIN_PASSWORD. Nunca versione o `.env`.
+Variáveis exportadas no sistema têm prioridade. Caminhos relativos são
+resolvidos a partir da raiz do projeto.
+
+Após alterar dependências, execute `poetry lock` e `poetry check --lock`.
+Versione `pyproject.toml` e `poetry.lock` juntos. O Docker exige esse lock.
+O lock do projeto é `poetry.lock`; o antigo lock do uv foi removido.

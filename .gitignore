@@ -58,4 +58,8 @@ marimo/_lsp/
 __marimo__/
 
 # MLflow (tracking local do pipeline de treino automatizado)
-mlruns_local/S
+mlruns_local/
+.env.*
+!.env.example
+
+mlruns_ci_snapshot/

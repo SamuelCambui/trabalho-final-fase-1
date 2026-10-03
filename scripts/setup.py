@@ -17,7 +17,7 @@ Fluxo:
 
 Uso:
 
-    uv run python scripts/setup.py
+    poetry run python scripts/setup.py
 
 Pré-requisito local:
 
@@ -49,6 +49,10 @@ import sys
 import sysconfig
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+
 
 # ============================================================
 # CONFIGURAÇÕES
@@ -69,9 +73,9 @@ KAGGLE_CONFIG = KAGGLE_DIR / "kaggle.json"
 KAGGLE_SECRET = "KAGGLE_JSON"
 
 # Dataset IBM Telco Customer Churn.
-DATASET = "blastchar/telco-customer-churn"
+DATASET = os.getenv("KAGGLE_DATASET", "blastchar/telco-customer-churn")
 
-MIN_PYTHON = (3, 11)
+MIN_PYTHON = (3, 13)
 
 
 # ============================================================
@@ -174,7 +178,7 @@ def check_dependencies() -> None:
     """
     Verifica se as dependências necessárias estão disponíveis.
 
-    A instalação das dependências é responsabilidade do uv.
+    A instalação das dependências é responsabilidade do Poetry.
     """
 
     info("Verificando dependências do projeto...")
@@ -201,7 +205,7 @@ def check_dependencies() -> None:
         print()
         print("Execute:")
         print()
-        print("    uv sync --dev")
+        print("    poetry install --with notebooks")
         print()
 
         sys.exit(1)
@@ -383,12 +387,12 @@ def check_kaggle() -> Path:
         print()
         print(
             "Verifique se o pacote 'kaggle' está "
-            "instalado pelo uv."
+            "instalado pelo Poetry."
         )
         print()
         print("Execute:")
         print()
-        print("    uv sync --dev")
+        print("    poetry install --with notebooks")
         print()
 
         sys.exit(1)
@@ -570,7 +574,7 @@ def print_summary() -> None:
 
     print()
     print("Próximo passo:")
-    print("    uv run python -m src.train_model.train")
+    print("    poetry run python -m src.train_model.train")
 
     print()
     print("=" * 60)

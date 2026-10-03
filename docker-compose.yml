@@ -5,7 +5,7 @@
 # Serviços disponíveis após subir:
 #   API......... http://localhost:8000  (docs em /docs)
 #   Prometheus.. http://localhost:9090
-#   Grafana..... http://localhost:3000  (login: admin / admin)
+#   Grafana..... http://localhost:3000  (credenciais definidas no .env)
 
 services:
   # API FastAPI com métricas (logs estruturados + Prometheus)
@@ -13,15 +13,12 @@ services:
     build: .
     container_name: churn_api
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - .env
     environment:
-      - ENVIRONMENT=production
-      - LOG_LEVEL=INFO
-      # Em produção real, gere uma chave forte:
-      #   python -c "import secrets; print(secrets.token_hex(32))"
-      - SECRET_KEY=${SECRET_KEY:-altere-esta-chave-em-producao}
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      SECRET_KEY: ${SECRET_KEY:?Defina SECRET_KEY no .env}
+      API_ADMIN_PASSWORD: ${API_ADMIN_PASSWORD:?Defina API_ADMIN_PASSWORD no .env}
     volumes:
       # O modelo treinado é montado como volume (somente leitura),
       # não fica embutido na imagem — ver comentário no Dockerfile
@@ -41,7 +38,7 @@ services:
     image: prom/prometheus:v2.47.0
     container_name: churn_prometheus
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
@@ -59,10 +56,10 @@ services:
     image: grafana/grafana:10.2.0
     container_name: churn_grafana
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?Defina GF_SECURITY_ADMIN_PASSWORD no .env}
     volumes:
       - grafana_data:/var/lib/grafana
       # Provisionamento automático: datasource do Prometheus e o

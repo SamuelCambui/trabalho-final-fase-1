@@ -1,17 +1,20 @@
 """Constantes e hiperparâmetros do pipeline de treinamento."""
 
-from pathlib import Path
+import json
+import os
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = PROJECT_ROOT / "data" / "raw"
-MODELS_DIR = PROJECT_ROOT / "models"
+from src.environment import PROJECT_ROOT as PROJECT_ROOT
+from src.environment import project_path
 
-TARGET_COLUMN = "Churn"
-ID_COLUMN = "customerID"
-RANDOM_STATE = 42
-TEST_SIZE = 0.3
-CV_FOLDS = 5
-SCORING = "roc_auc"
+DATA_DIR = project_path("DATA_DIR", "data/raw")
+MODELS_DIR = project_path("MODELS_DIR", "models")
+
+TARGET_COLUMN = os.getenv("TARGET_COLUMN", "Churn")
+ID_COLUMN = os.getenv("ID_COLUMN", "customerID")
+RANDOM_STATE = int(os.getenv("RANDOM_STATE", "42"))
+TEST_SIZE = float(os.getenv("TEST_SIZE", "0.3"))
+CV_FOLDS = int(os.getenv("CV_FOLDS", "5"))
+SCORING = os.getenv("SCORING", "roc_auc")
 
 RF_MODEL_PATH = MODELS_DIR / "rf_model.joblib"
 MLP_MODEL_PATH = MODELS_DIR / "mlp_model.joblib"
@@ -33,7 +36,13 @@ MLP_PARAM_GRID = {
 # ==========================================================
 # MLflow (tracking do pipeline de treino automatizado / CI)
 # ==========================================================
-MLFLOW_EXPERIMENT_NAME = "churn-prediction-cicd"
-MODEL_REGISTRY_NAME = "churn-model"
-PRIMARY_METRIC = "roc_auc"  # mesma metrica usada na comparacao por CV (SCORING)
-MIN_ACCEPTABLE_METRIC = 0.60  # abaixo disso, pipeline falha (algo muito errado)
+MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "churn-prediction-cicd")
+MODEL_REGISTRY_NAME = os.getenv("MODEL_REGISTRY_NAME", "churn-model")
+PRIMARY_METRIC = os.getenv("PRIMARY_METRIC", "roc_auc")
+MIN_ACCEPTABLE_METRIC = float(os.getenv("MIN_ACCEPTABLE_METRIC", "0.60"))
+
+RF_PARAM_GRID = json.loads(os.getenv("RF_PARAM_GRID", json.dumps(RF_PARAM_GRID)))
+MLP_PARAM_GRID = json.loads(os.getenv("MLP_PARAM_GRID", json.dumps(MLP_PARAM_GRID)))
+MLP_PARAM_GRID["classifier__hidden_layer_sizes"] = [
+    tuple(layers) for layers in MLP_PARAM_GRID["classifier__hidden_layer_sizes"]
+]

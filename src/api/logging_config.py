@@ -33,6 +33,8 @@ from datetime import datetime, timezone
 
 from pythonjsonlogger import jsonlogger
 
+from src import environment as environment  # Load .env before resolving LOG_LEVEL.
+
 SERVICE_NAME = "churn-prediction-api"
 
 

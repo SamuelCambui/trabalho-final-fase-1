@@ -2,106 +2,58 @@
 name = "trabalho-final-fase-1"
 version = "0.1.0"
 description = "Pipeline de Machine Learning e API FastAPI para predição de churn Telco"
+authors = []
+requires-python = ">=3.13,<3.14"
+dynamic = ["dependencies"]
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "fairlearn",
-    "fastapi>=0.141.1",
-    "httpx2>=0.1.0",
-    "jinja2>=3.1.6",
-    "PyJWT>=2.10.1",
-    "joblib>=1.5.3",
-    "matplotlib>=3.11.1",
-    "mlflow>=2.14",
-    "numpy>=2.5.2,<3",
-    "pandas>=2.2,<3",
-    "pydantic>=2.13.4",
-    "python-dotenv>=1.2.2",
-    "scikit-learn>=1.9.0,<2",
-    "scipy>=1.18.0",
-    "seaborn>=0.13.2",
-    "uvicorn>=0.52.1",
-    "kaggle==2.2.4",
-]
 
+[tool.poetry]
+packages = [{ include = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.13,<3.14"
+fastapi = ">=0.141.1,<1"
+uvicorn = ">=0.52.1,<1"
+pydantic = ">=2.13.4,<3"
+PyJWT = ">=2.10.1,<3"
+joblib = ">=1.5.3,<2"
+numpy = ">=2.5.2,<3"
+pandas = ">=2.2,<3"
+# Preserve the sklearn version recorded by the supplied model artifacts.
+scikit-learn = "1.9.0"
+scipy = ">=1.18.0,<2"
+mlflow = ">=3.15.1,<4"
+python-dotenv = ">=1.2.2,<2"
+python-json-logger = ">=3.3,<4"
+prometheus-client = ">=0.21,<1"
+prometheus-fastapi-instrumentator = ">=8.1,<9"
+kaggle = "2.2.4"
+# Direct imports from Starlette are used by the API middleware.
+starlette = ">=0.40,<2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=9.1.1,<10"
+pytest-cov = ">=7.1,<8"
+pytest-mock = ">=3.15.1,<4"
+ruff = ">=0.16.2,<1"
+flake8 = ">=7.3,<8"
+# HTTP clients used by FastAPI TestClient.
+httpx = ">=0.28.1,<1"
+
+[tool.poetry.group.notebooks]
+optional = true
+
+[tool.poetry.group.notebooks.dependencies]
+jupyter = ">=1.1.1,<2"
+ipykernel = ">=7.3,<8"
+matplotlib = ">=3.11.1,<4"
+seaborn = ">=0.13.2,<1"
+fairlearn = ">=0.14,<1"
+statsmodels = ">=0.14.6,<1"
 
 [build-system]
-requires = ["setuptools>=80"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["src*"]
-
-[dependency-groups]
-dev = [
-    "flake8>=7.3.0",
-    "ipykernel>=7.3.0",
-    "jupyter>=1.1.1",
-    "pytest>=9.1.1",
-    "pytest-cov>=7.1.0",
-    "pytest-mock>=3.15.1",
-    "ruff>=0.16.2",
-    "statsmodels>=0.14.6",
-    "taskipy>=1.14.1",
-]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_functions = "test_*"
-addopts = "-v --tb=short"
-
-[tool.ruff]
-line-length = 88
-target-version = "py313"[project]
-name = "trabalho-final-fase-1"
-version = "0.1.0"
-description = "Pipeline de Machine Learning e API FastAPI para predição de churn Telco"
-readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "fairlearn",
-    "fastapi>=0.141.1",
-    "httpx2>=0.1.0",
-    "jinja2>=3.1.6",
-    "PyJWT>=2.10.1",
-    "joblib>=1.5.3",
-    "matplotlib>=3.11.1",
-    "mlflow>=2.14",
-    "numpy>=2.5.2,<3",
-    "pandas>=2.2,<3",
-    "pydantic>=2.13.4",
-    "prometheus-client>=0.21.0",
-    "prometheus-fastapi-instrumentator>=8.1.0",
-    "python-dotenv>=1.2.2",
-    "python-json-logger>=3.3.0",
-    "scikit-learn>=1.9.0,<2",
-    "scipy>=1.18.0",
-    "seaborn>=0.13.2",
-    "uvicorn>=0.52.1",
-    "kaggle==2.2.4",
-]
-
-
-[build-system]
-requires = ["setuptools>=80"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["src*"]
-
-[dependency-groups]
-dev = [
-    "flake8>=7.3.0",
-    "ipykernel>=7.3.0",
-    "jupyter>=1.1.1",
-    "pytest>=9.1.1",
-    "pytest-cov>=7.1.0",
-    "pytest-mock>=3.15.1",
-    "ruff>=0.16.2",
-    "statsmodels>=0.14.6",
-    "taskipy>=1.14.1",
-]
+requires = ["poetry-core>=2.0,<3"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -115,18 +67,6 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
-ignore = []
 
 [tool.ruff.lint.per-file-ignores]
-# N806: X/X_train/X_test maiúsculo é a convenção padrão do scikit-learn
-# para a matriz de features (notação matemática), não um erro de estilo.
-"tests/test_model_metrics.py" = ["N806"]
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W"]
-ignore = []
-
-[tool.ruff.lint.per-file-ignores]
-# N806: X/X_train/X_test maiúsculo é a convenção padrão do scikit-learn
-# para a matriz de features (notação matemática), não um erro de estilo.
 "tests/test_model_metrics.py" = ["N806"]
