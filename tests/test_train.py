@@ -12,7 +12,6 @@ from src.train_model import train
 
 def test_parse_args_padrao(monkeypatch):
     """Deve utilizar os valores padrão quando nenhum argumento for informado."""
-
     monkeypatch.setattr(
         "sys.argv",
         ["train.py"],
@@ -26,7 +25,6 @@ def test_parse_args_padrao(monkeypatch):
 
 def test_parse_args_com_dataset(monkeypatch):
     """Deve interpretar corretamente o caminho do dataset."""
-
     caminho_dataset = "data/raw/customer_churn.csv"
 
     monkeypatch.setattr(
@@ -46,7 +44,6 @@ def test_parse_args_com_dataset(monkeypatch):
 
 def test_parse_args_sem_otimizacao(monkeypatch):
     """Deve ativar a flag para desativar a otimização."""
-
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -85,7 +82,6 @@ def test_main_fluxo_completo(
     mock_evaluate_on_test,
 ):
     """Deve executar corretamente todo o fluxo de treinamento."""
-
     dataset_path = Path("data/raw/customer_churn.csv")
 
     mock_parse_args.return_value = MagicMock(
@@ -146,6 +142,10 @@ def test_main_fluxo_completo(
                 "Random Forest",
                 "MLP",
             ],
+            "ROC-AUC Médio": [
+                0.85,
+                0.75,
+            ],
             "F1": [
                 0.80,
                 0.70,
@@ -154,6 +154,7 @@ def test_main_fluxo_completo(
     )
 
     mock_compare_models.return_value = resultados_cv
+    mock_evaluate_on_test.return_value = {"metrics": {"roc_auc": 0.85}}
 
     caminho_salvo = Path(
         "models/best_model.joblib"
@@ -238,7 +239,6 @@ def test_main_sem_otimizacao(
     mock_evaluate_on_test,
 ):
     """Deve treinar os modelos sem otimização quando solicitado."""
-
     dataset_path = Path(
         "data/raw/customer_churn.csv"
     )
@@ -292,8 +292,10 @@ def test_main_sem_otimizacao(
     mock_compare_models.return_value = pd.DataFrame(
         {
             "Modelo": ["MLP"],
+            "ROC-AUC Médio": [0.75],
         }
     )
+    mock_evaluate_on_test.return_value = {"metrics": {"roc_auc": 0.75}}
 
     train.main()
 
@@ -340,7 +342,6 @@ def test_main_utiliza_dataset_informado(
     mock_evaluate_on_test,
 ):
     """Deve utilizar o dataset informado e não buscar automaticamente."""
-
     dataset_informado = Path(
         "meu_dataset.csv"
     )
@@ -388,8 +389,10 @@ def test_main_utiliza_dataset_informado(
     mock_compare_models.return_value = pd.DataFrame(
         {
             "Modelo": ["Random Forest"],
+            "ROC-AUC Médio": [0.80],
         }
     )
+    mock_evaluate_on_test.return_value = {"metrics": {"roc_auc": 0.80}}
 
     train.main()
 

@@ -15,8 +15,7 @@ from src.train_model.config import ID_COLUMN, RANDOM_STATE, TARGET_COLUMN, TEST_
 
 
 def load_data(caminho: Path) -> pd.DataFrame:
-    """
-    Carrega o dataset Telco Customer Churn a partir de um arquivo CSV.
+    """Carrega o dataset Telco Customer Churn a partir de um arquivo CSV.
 
     Args:
         caminho: Caminho absoluto ou relativo do arquivo CSV.
@@ -28,8 +27,7 @@ def load_data(caminho: Path) -> pd.DataFrame:
 
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Aplica limpeza mínima alinhada ao notebook de EDA.
+    """Aplica limpeza mínima alinhada ao notebook de EDA.
 
     Converte ``TotalCharges`` para numérico, remove ``customerID`` e
     descarta linhas inválidas geradas na conversão.
@@ -54,8 +52,7 @@ def prepare_features_target(
     df: pd.DataFrame,
     target_col: str = TARGET_COLUMN,
 ) -> tuple[pd.DataFrame, pd.Series]:
-    """
-    Separa features e variável alvo, codificando churn como 0/1.
+    """Separa features e variável alvo, codificando churn como 0/1.
 
     Args:
         df: DataFrame já limpo.
@@ -86,8 +83,7 @@ def split_data(
     test_size: float = TEST_SIZE,
     random_state: int = RANDOM_STATE,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """
-    Divide os dados em treino e teste com estratificação.
+    """Divide os dados em treino e teste com estratificação.
 
     Args:
         x: Features.
@@ -108,8 +104,7 @@ def split_data(
 
 
 def get_feature_groups(x: pd.DataFrame) -> tuple[list[str], list[str]]:
-    """
-    Identifica colunas numéricas e categóricas do dataset.
+    """Identifica colunas numéricas e categóricas do dataset.
 
     Args:
         x: DataFrame de features.
@@ -123,8 +118,7 @@ def get_feature_groups(x: pd.DataFrame) -> tuple[list[str], list[str]]:
 
 
 def build_preprocessor(x: pd.DataFrame) -> ColumnTransformer:
-    """
-    Constrói o pré-processador com imputação, escala e one-hot encoding.
+    """Constrói o pré-processador com imputação, escala e one-hot encoding.
 
     O pré-processador deve ser usado dentro de um ``Pipeline`` do scikit-learn
     para evitar vazamento de informação entre treino e validação.

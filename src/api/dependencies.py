@@ -1,7 +1,6 @@
 """Dependências compartilhadas das rotas da API."""
 
 import jwt
-
 from fastapi import Cookie, Depends, HTTPException, status
 
 from src.api.config import (
@@ -9,10 +8,8 @@ from src.api.config import (
     PREDICTION_THRESHOLD,
     PROBABILITY_DECIMALS,
 )
-
 from src.api.services.auth_service import AuthService
 from src.api.services.churn_predictor import ChurnPredictorService
-
 
 predictor_service = ChurnPredictorService(
     model_path=MODEL_PATH,
@@ -25,13 +22,11 @@ auth_service = AuthService()
 
 def get_predictor_service() -> ChurnPredictorService:
     """Retorna a instância singleton do serviço de predição."""
-
     return predictor_service
 
 
 def get_auth_service() -> AuthService:
     """Retorna a instância singleton do serviço de autenticação."""
-
     return auth_service
 
 
@@ -42,7 +37,6 @@ def get_current_user(
     auth: AuthService = Depends(get_auth_service),
 ) -> dict:
     """Valida o JWT armazenado no cookie."""
-
     if not access_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

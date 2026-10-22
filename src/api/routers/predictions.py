@@ -26,7 +26,6 @@ def predict_churn(
     _current_user: dict = Depends(get_current_user),
 ) -> PredictionResponse:
     """Recebe os dados de um cliente e retorna a predição de churn."""
-
     trace_id = getattr(request.state, "trace_id", None)
 
     if not predictor.is_loaded:

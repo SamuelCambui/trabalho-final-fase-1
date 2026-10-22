@@ -48,8 +48,7 @@ def _as_int_flag(condition: bool) -> int:
 
 
 def transform_customer_features(customer_data: dict[str, Any]) -> pd.DataFrame:
-    """
-    Converte o payload bruto Telco nas 18 features do modelo campeão.
+    """Converte o payload bruto Telco nas 18 features do modelo campeão.
 
     O pipeline serializado já inclui ``StandardScaler``; esta função devolve
     as features **sem** escala adicional.

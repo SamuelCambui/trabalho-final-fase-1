@@ -11,12 +11,20 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional, Tuple
 
 from src.train_model.config import PROJECT_ROOT
 
+# A partir do MLflow 3.x, o backend de arquivo local ("file://...") entra
+# em modo de manutencao por padrao e levanta excecao ao ser usado, a nao
+# ser que esta variavel seja definida. Mantemos o backend de arquivo de
+# proposito (ver docstring do modulo: compara runs locais sem precisar de
+# um servidor MLflow remoto), entao fazemos o opt-out aqui, de forma
+# centralizada, em vez de exigir que cada ambiente (local, CI) configure
+# a variavel manualmente.
+os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
 
-def resolve_tracking_paths() -> Tuple[str, Optional[str]]:
+
+def resolve_tracking_paths() -> tuple[str, str | None]:
     """Retorna (tracking_uri, tracking_dir) usando env vars ou defaults.
 
     Prioridade:
@@ -24,9 +32,14 @@ def resolve_tracking_paths() -> Tuple[str, Optional[str]]:
         2. MLFLOW_TRACKING_FOLDER (nome de pasta local, relativo a raiz do projeto)
         3. Default: "mlruns_ci_snapshot" quando rodando em CI (env CI=true),
            "mlruns_local" quando rodando localmente.
+
+    Returns:
+        Tupla ``(tracking_uri, tracking_dir)``. ``tracking_dir`` é
+        ``None`` quando ``MLFLOW_TRACKING_URI`` aponta para um destino
+        que não é uma pasta local (ex.: um servidor remoto).
     """
     tracking_uri_env = os.environ.get("MLFLOW_TRACKING_URI")
-    tracking_dir: Optional[str] = None
+    tracking_dir: str | None = None
 
     if tracking_uri_env:
         tracking_uri = tracking_uri_env

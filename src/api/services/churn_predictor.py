@@ -20,6 +20,19 @@ class ChurnPredictorService:
         threshold: float = 0.5,
         probability_decimals: int = 4,
     ) -> None:
+        """Configura os parâmetros do serviço; não carrega o modelo ainda.
+
+        O carregamento real do artefato acontece em ``load()``,
+        chamado no ``lifespan`` da API — separar construção de
+        carregamento permite testar o serviço sem tocar em disco.
+
+        Args:
+            model_path: Caminho do modelo treinado (``.joblib``).
+            threshold: Probabilidade mínima para classificar como
+                churn positivo.
+            probability_decimals: Casas decimais na probabilidade
+                retornada ao cliente da API.
+        """
         self.model_path = model_path
         self.threshold = threshold
         self.probability_decimals = probability_decimals
@@ -77,8 +90,7 @@ class ChurnPredictorService:
         return type(self._model).__name__
 
     def predict(self, customer_data: dict) -> tuple[str, float]:
-        """
-        Gera predição de churn para um único cliente.
+        """Gera predição de churn para um único cliente.
 
         Usa o pipeline de inferência único (engenharia de features ->
         ``StandardScaler`` -> ``LogisticRegression``), composto em

@@ -24,8 +24,7 @@ def cross_validate_model(
     y_train: pd.Series,
     model_name: str,
 ) -> dict[str, float]:
-    """
-    Executa validação cruzada e resume média e desvio padrão da métrica.
+    """Executa validação cruzada e resume média e desvio padrão da métrica.
 
     Args:
         pipeline: Pipeline treinado ou não treinado.
@@ -59,8 +58,7 @@ def compare_models(
     y_train: pd.Series,
     salvar_relatorio: bool = True,
 ) -> pd.DataFrame:
-    """
-    Compara modelos com validação cruzada no conjunto de treino.
+    """Compara modelos com validação cruzada no conjunto de treino.
 
     Args:
         modelos: Dicionário ``{nome: pipeline}`` a ser comparado.
@@ -95,8 +93,7 @@ def evaluate_on_test(
     model_name: str,
     exibir_relatorio: bool = True,
 ) -> dict[str, Any]:
-    """
-    Avalia um pipeline no conjunto de teste hold-out.
+    """Avalia um pipeline no conjunto de teste hold-out.
 
     Args:
         pipeline: Modelo já treinado.

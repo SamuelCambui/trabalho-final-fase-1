@@ -33,7 +33,6 @@ from src.api.templates.index import get_home_page
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Carrega o modelo na inicialização."""
-
     predictor = get_predictor_service()
 
     predictor.load()
@@ -91,7 +90,6 @@ async def http_exception_handler(
     request: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
     """Converte toda HTTPException (401, 403, 422, 503 etc.) no envelope único."""
-
     trace_id = getattr(request.state, "trace_id", None)
 
     body = ErrorResponse(
@@ -114,7 +112,6 @@ async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     """Converte erros de validação do Pydantic (422) no mesmo envelope."""
-
     trace_id = getattr(request.state, "trace_id", None)
 
     message = "; ".join(
@@ -144,7 +141,6 @@ async def validation_exception_handler(
 )
 async def home() -> HTMLResponse:
     """Exibe a interface web."""
-
     return get_home_page()
 
 

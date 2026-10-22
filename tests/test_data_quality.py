@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 DATA_PATH = Path("data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv")
 
 

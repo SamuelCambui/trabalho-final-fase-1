@@ -20,8 +20,7 @@ from src.train_model.utils import save_model
 
 
 def _build_mlp_pipeline(x_train: pd.DataFrame) -> Pipeline:
-    """
-    Monta o pipeline completo de pré-processamento + MLP.
+    """Monta o pipeline completo de pré-processamento + MLP.
 
     Args:
         x_train: Features de treino para configurar o pré-processador.
@@ -51,8 +50,7 @@ def train_mlp(
     otimizar: bool = True,
     salvar: bool = True,
 ) -> BaseEstimator:
-    """
-    Treina uma rede MLP com ou sem busca de hiperparâmetros.
+    """Treina uma rede MLP com ou sem busca de hiperparâmetros.
 
     Args:
         x_train: Features de treino.

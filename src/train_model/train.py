@@ -1,5 +1,4 @@
-"""
-Script principal para treinar RF e MLP e comparar os modelos.
+"""Script principal para treinar RF e MLP e comparar os modelos.
 
 Uso:
     python -m src.modelo.train
@@ -16,6 +15,8 @@ from pathlib import Path
 
 import mlflow
 import mlflow.sklearn
+import pandas as pd
+from sklearn.base import BaseEstimator
 
 from src.train_model.comparison import compare_models, evaluate_on_test
 from src.train_model.config import (
@@ -38,8 +39,7 @@ from src.train_model.utils import find_dataset_csv, save_model
 
 
 def parse_args() -> argparse.Namespace:
-    """
-    Define e interpreta argumentos da linha de comando.
+    """Define e interpreta argumentos da linha de comando.
 
     Returns:
         Namespace com flags de execução do treinamento.
@@ -119,67 +119,107 @@ def main() -> None:
 def log_mlflow(
     *,
     melhor_nome: str,
-    melhor_modelo,
-    resultados_cv,
+    melhor_modelo: BaseEstimator,
+    resultados_cv: pd.DataFrame,
     resultados_teste: dict[str, dict],
-    x_train,
+    x_train: pd.DataFrame,
 ) -> None:
     """Loga parametros, metricas e o modelo vencedor no MLflow.
 
     Tambem grava um arquivo ``latest_run.json`` na pasta de tracking, usado
     pelo ``register_model.py`` para registrar/promover a versao no Model
     Registry (ponte entre o job de treino e o job de registro no CI).
-    """
-    tracking_uri, tracking_dir = resolve_tracking_paths()
-    mlflow.set_tracking_uri(tracking_uri)
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-    print(f"\nMLflow tracking URI: {tracking_uri}")
 
-    run_name = melhor_nome.lower().replace(" ", "_")
+    Args:
+        melhor_nome: Nome do modelo escolhido na comparacao (ex.: "Random
+            Forest"), usado para nomear a run e localizar suas metricas.
+        melhor_modelo: Pipeline sklearn ja treinado (fit) do modelo
+            vencedor, pronto para ser logado no MLflow.
+        resultados_cv: Saida de ``compare_models`` — uma linha por
+            modelo comparado, com a coluna "ROC-AUC Medio".
+        resultados_teste: Metricas de cada modelo no conjunto de teste,
+            indexadas pelo nome do modelo.
+        x_train: Features de treino; usado apenas para gerar o
+            ``input_example`` (5 linhas) que acompanha o modelo logado.
+    """
+    tracking_uri, tracking_dir = configure_mlflow()
+    run_name = normalize_model_name(melhor_nome)
+
     with mlflow.start_run(run_name=run_name) as run:
         mlflow.log_param("modelo_selecionado", melhor_nome)
-
-        for _, linha in resultados_cv.iterrows():
-            nome_modelo = linha["Modelo"].lower().replace(" ", "_")
-            mlflow.log_metric(f"cv_{nome_modelo}_roc_auc", linha["ROC-AUC Médio"])
-
-        for nome_modelo, resultado in resultados_teste.items():
-            prefixo = nome_modelo.lower().replace(" ", "_")
-            for metrica, valor in resultado["metrics"].items():
-                mlflow.log_metric(f"{prefixo}_test_{metrica}", valor)
-
-        metricas_vencedor = resultados_teste[melhor_nome]["metrics"]
-
-        model_info = mlflow.sklearn.log_model(
-            sk_model=melhor_modelo,
-            name="model",
-            input_example=x_train.iloc[:5],
-        )
+        log_cv_metrics(resultados_cv)
+        log_test_metrics(resultados_teste)
+        model_uri = log_trained_model(melhor_modelo, x_train)
 
         print(f"  Run ID: {run.info.run_id}")
-        print(f"  Model URI: {model_info.model_uri}")
+        print(f"  Model URI: {model_uri}")
 
+        metricas_vencedor = resultados_teste[melhor_nome]["metrics"]
         metadata = {
             "run_id": run.info.run_id,
-            "model_uri": model_info.model_uri,
+            "model_uri": model_uri,
             "modelo_selecionado": melhor_nome,
             PRIMARY_METRIC: metricas_vencedor[PRIMARY_METRIC],
             "metrics": metricas_vencedor,
             "logged_at": datetime.now(timezone.utc).isoformat(),
         }
+        save_run_metadata(metadata, tracking_dir)
 
-        metadata_path = (
-            Path(tracking_dir) / "latest_run.json" if tracking_dir else None
-        )
-        if metadata_path:
-            metadata_path.write_text(
-                json.dumps(metadata, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
-            print(f"  Metadata salva em: {metadata_path}")
-            print("  -> Execute register_model.py para atualizar o Model Registry.")
-        else:
-            print("  [AVISO] Nao foi possivel determinar caminho para a metadata.")
+
+def normalize_model_name(name: str) -> str:
+    """Normaliza o nome do modelo para identificadores de métricas."""
+    return name.lower().replace(" ", "_")
+
+
+def configure_mlflow() -> tuple[str, str | Path | None]:
+    """Configura o tracking e o experimento do MLflow."""
+    tracking_uri, tracking_dir = resolve_tracking_paths()
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    print(f"\\nMLflow tracking URI: {tracking_uri}")
+    return tracking_uri, tracking_dir
+
+
+def log_cv_metrics(resultados_cv: pd.DataFrame) -> None:
+    """Registra as métricas de validação cruzada de cada modelo."""
+    for _, linha in resultados_cv.iterrows():
+        nome = normalize_model_name(str(linha["Modelo"]))
+        mlflow.log_metric(f"cv_{nome}_roc_auc", float(linha["ROC-AUC Médio"]))
+
+
+def log_test_metrics(resultados_teste: dict[str, dict]) -> None:
+    """Registra as métricas de teste de todos os modelos."""
+    for nome, resultado in resultados_teste.items():
+        prefixo = normalize_model_name(nome)
+        for metrica, valor in resultado["metrics"].items():
+            mlflow.log_metric(f"{prefixo}_test_{metrica}", float(valor))
+
+
+def log_trained_model(modelo: BaseEstimator, x_train: pd.DataFrame) -> str:
+    """Registra o pipeline vencedor e retorna a URI do modelo."""
+    model_info = mlflow.sklearn.log_model(
+        sk_model=modelo,
+        name="model",
+        input_example=x_train.iloc[:5],
+        serialization_format="cloudpickle",
+        pip_requirements=["scikit-learn", "pandas", "numpy"],
+    )
+    return model_info.model_uri
+
+
+def save_run_metadata(metadata: dict, tracking_dir: str | Path | None) -> None:
+    """Salva os dados da run para o processo de registro no Registry."""
+    if not tracking_dir:
+        print("  [AVISO] Nao foi possivel determinar caminho para a metadata.")
+        return
+
+    metadata_path = Path(tracking_dir) / "latest_run.json"
+    metadata_path.write_text(
+        json.dumps(metadata, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(f"  Metadata salva em: {metadata_path}")
+    print("  -> Execute register_model.py para atualizar o Model Registry.")
 
 
 if __name__ == "__main__":

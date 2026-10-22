@@ -30,6 +30,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+from typing import Any
 
 from pythonjsonlogger import jsonlogger
 
@@ -49,7 +50,24 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         logger: nome do logger que emitiu o registro.
     """
 
-    def add_fields(self, log_record, record, message_dict):
+    def add_fields(
+        self,
+        log_record: dict[str, Any],
+        record: logging.LogRecord,
+        message_dict: dict[str, Any],
+    ) -> None:
+        """Insere os campos padrão (timestamp, level, service, logger).
+
+        Chamado automaticamente pelo ``pythonjsonlogger`` para cada
+        registro de log, antes dele ser serializado como JSON.
+
+        Args:
+            log_record: Dicionário que vira a linha JSON final;
+                mutado in-place com os campos padrão.
+            record: Registro de log original do módulo ``logging``.
+            message_dict: Campos extras passados via ``extra={...}``
+                na chamada de log.
+        """
         super().add_fields(log_record, record, message_dict)
 
         log_record["timestamp"] = (

@@ -23,7 +23,6 @@ def login(
     auth_service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     """Autentica o usuário e armazena o JWT em cookie HttpOnly."""
-
     trace_id = getattr(request.state, "trace_id", None)
 
     user = auth_service.authenticate(
@@ -82,7 +81,6 @@ def login(
 @router.post("/logout")
 def logout(response: Response, request: Request) -> dict:
     """Remove o cookie de autenticação."""
-
     logger.info(
         "logout",
         extra={"trace_id": getattr(request.state, "trace_id", None)},
@@ -105,7 +103,6 @@ def get_me(
     current_user: dict = Depends(get_current_user),
 ) -> UserInfoResponse:
     """Retorna os dados do usuário autenticado."""
-
     return UserInfoResponse(
         username=current_user["username"],
         role=current_user["role"],

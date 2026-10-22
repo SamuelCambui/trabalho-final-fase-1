@@ -3530,7 +3530,6 @@ predictionForm.addEventListener(
 
 def get_home_page() -> HTMLResponse:
     """Retorna a interface web."""
-
     return HTMLResponse(
         content=HTML_PAGE
     )

@@ -18,8 +18,7 @@ class AuthService:
     """Valida credenciais e gerencia tokens JWT."""
 
     def authenticate(self, username: str, password: str) -> dict | None:
-        """
-        Verifica usuário e senha no banco local de credenciais.
+        """Verifica usuário e senha no banco local de credenciais.
 
         Returns:
             Dicionário com ``role`` se válido; ``None`` se inválido.
@@ -30,8 +29,7 @@ class AuthService:
         return {"username": username, "role": user["role"]}
 
     def create_access_token(self, username: str, role: str) -> tuple[str, int]:
-        """
-        Gera um token JWT assinado.
+        """Gera um token JWT assinado.
 
         Returns:
             Tupla ``(token, expires_in_seconds)``.
@@ -47,8 +45,7 @@ class AuthService:
         return token, expires_in
 
     def decode_token(self, token: str) -> dict:
-        """
-        Decodifica e valida um token JWT.
+        """Decodifica e valida um token JWT.
 
         Raises:
             jwt.ExpiredSignatureError: Token expirado.

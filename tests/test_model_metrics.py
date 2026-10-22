@@ -13,7 +13,6 @@ from src.train_model.preprocessing import (
 )
 from src.train_model.utils import load_model
 
-
 # ============================================================
 # CONFIGURAÇÃO
 # ============================================================
@@ -48,7 +47,6 @@ MIN_WEIGHTED_F1 = 0.60
 
 def test_model_metrics():
     """Valida se o modelo atende às métricas mínimas."""
-
     # ========================================================
     # CARREGAR DADOS
     # ========================================================

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.metrics import (
@@ -22,8 +23,7 @@ from src.train_model.config import MODELS_DIR
 
 
 def ensure_models_dir() -> Path:
-    """
-    Garante que o diretório de modelos exista.
+    """Garante que o diretório de modelos exista.
 
     Returns:
         Caminho absoluto do diretório ``models/``.
@@ -33,8 +33,7 @@ def ensure_models_dir() -> Path:
 
 
 def save_model(model: BaseEstimator, path: Path) -> Path:
-    """
-    Serializa um modelo treinado em disco.
+    """Serializa um modelo treinado em disco.
 
     Args:
         model: Estimador ou pipeline já ajustado.
@@ -49,8 +48,7 @@ def save_model(model: BaseEstimator, path: Path) -> Path:
 
 
 def load_model(path: Path) -> BaseEstimator:
-    """
-    Carrega um modelo previamente serializado.
+    """Carrega um modelo previamente serializado.
 
     Args:
         path: Caminho do arquivo ``.joblib``.
@@ -62,8 +60,7 @@ def load_model(path: Path) -> BaseEstimator:
 
 
 def find_dataset_csv(data_dir: Path) -> Path:
-    """
-    Localiza o primeiro arquivo CSV disponível no diretório de dados.
+    """Localiza o primeiro arquivo CSV disponível no diretório de dados.
 
     Args:
         data_dir: Diretório onde o dataset bruto foi baixado.
@@ -85,11 +82,10 @@ def find_dataset_csv(data_dir: Path) -> Path:
 
 def compute_classification_metrics(
     y_true: pd.Series,
-    y_pred,
-    y_proba,
+    y_pred: np.ndarray,
+    y_proba: np.ndarray,
 ) -> dict[str, Any]:
-    """
-    Calcula métricas de classificação para o conjunto de teste.
+    """Calcula métricas de classificação para o conjunto de teste.
 
     Args:
         y_true: Rótulos reais.
@@ -112,10 +108,9 @@ def print_evaluation_report(
     model_name: str,
     metrics: dict[str, Any],
     y_true: pd.Series,
-    y_pred,
+    y_pred: np.ndarray,
 ) -> None:
-    """
-    Exibe métricas e matriz de confusão no console.
+    """Exibe métricas e matriz de confusão no console.
 
     Args:
         model_name: Nome do modelo avaliado.

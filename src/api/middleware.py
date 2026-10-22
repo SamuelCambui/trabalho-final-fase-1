@@ -20,8 +20,8 @@ requisição (autenticação -> predição -> resposta) buscando por um
 import time
 import uuid
 
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from src.api.logging_config import logger
 
@@ -43,7 +43,20 @@ class LoggingMiddleware(BaseHTTPMiddleware):
            X-Response-Time-Ms adicionados.
     """
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        """Gera o trace_id, mede latência e loga o acesso à requisição.
+
+        Args:
+            request: Requisição HTTP recebida.
+            call_next: Próximo handler na cadeia (endpoint ou outro
+                middleware), conforme o contrato do Starlette.
+
+        Returns:
+            A resposta original, com os headers X-Trace-ID e
+            X-Response-Time-Ms adicionados.
+        """
         trace_id = str(uuid.uuid4())[:8]
         request.state.trace_id = trace_id
 

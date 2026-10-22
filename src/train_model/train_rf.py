@@ -10,9 +10,9 @@ from sklearn.pipeline import Pipeline
 
 from src.train_model.config import (
     CV_FOLDS,
+    RANDOM_STATE,
     RF_MODEL_PATH,
     RF_PARAM_GRID,
-    RANDOM_STATE,
     SCORING,
 )
 from src.train_model.preprocessing import build_preprocessor
@@ -20,8 +20,7 @@ from src.train_model.utils import save_model
 
 
 def _build_rf_pipeline(x_train: pd.DataFrame) -> Pipeline:
-    """
-    Monta o pipeline completo de pré-processamento + Random Forest.
+    """Monta o pipeline completo de pré-processamento + Random Forest.
 
     Args:
         x_train: Features de treino para configurar o pré-processador.
@@ -50,8 +49,7 @@ def train_rf(
     otimizar: bool = True,
     salvar: bool = True,
 ) -> BaseEstimator:
-    """
-    Treina um Random Forest com ou sem busca de hiperparâmetros.
+    """Treina um Random Forest com ou sem busca de hiperparâmetros.
 
     A otimização usa ``GridSearchCV`` sobre o pipeline completo, garantindo
     que pré-processamento e modelo sejam ajustados sem vazamento de dados.
